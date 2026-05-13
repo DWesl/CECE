@@ -233,6 +233,9 @@ target_include_directories(
     ${ESMF_INCLUDE_DIRS}
 )
 
+# Suppress conflicting C++ MPI bindings pulled in via ESMF's ESMC.h -> mpi.h -> mpicxx.h
+target_compile_definitions(cece PUBLIC MPICH_SKIP_MPICXX OMPI_SKIP_MPICXX)
+
 if(ESMF_FOUND)
   target_link_libraries(cece PUBLIC Kokkos::kokkos ESMF::ESMF yaml-cpp)
 else()
