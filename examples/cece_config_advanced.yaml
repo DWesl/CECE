@@ -2,16 +2,14 @@
 driver:
   start_time: "2020-07-15T00:00:00"
   end_time: "2020-07-15T12:00:00"
-  timestep_seconds: 300 # 5-minute base timestep
-  stacking_refresh_interval_seconds: 3600 # Stacking engine runs hourly
-
-grid:
-  nx: 144 # 2.5° global resolution
-  ny: 91 # 2.0° global resolution
-  lon_min: -180.0
-  lon_max: 177.5
-  lat_min: -90.0
-  lat_max: 90.0
+  timestep_seconds: 3600
+  grid:
+    nx: 144 # 2.5° global resolution
+    ny: 91 # 2.0° global resolution
+    lon_min: -180.0
+    lon_max: 177.5
+    lat_min: -90.0
+    lat_max: 90.0
 
 # Field name mappings
 meteorology:

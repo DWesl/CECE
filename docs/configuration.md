@@ -7,9 +7,8 @@ CECE is configured using a YAML file, typically named `cece_config.yaml`. This f
 ```yaml
 driver:
   # ... driver timing and execution configuration ...
-
-grid:
-  # ... computational grid specification ...
+  grid:
+    # ... computational grid specification ...
 
 meteorology:
   # ... meteorological field name mappings ...
@@ -119,7 +118,7 @@ Existing configurations without any `refresh_interval_seconds` fields continue t
 
 ## `grid`
 
-The `grid` section defines the computational domain and resolution.
+The `grid` section defines the computational domain and resolution. It must be nested under `driver:`.
 
 | Key | Type | Description |
 | --- | --- | --- |
@@ -132,13 +131,14 @@ The `grid` section defines the computational domain and resolution.
 
 **Example:**
 ```yaml
-grid:
-  nx: 144           # 2.5° longitude resolution
-  ny: 91            # 2° latitude resolution
-  lon_min: -180.0
-  lon_max: 177.5
-  lat_min: -90.0
-  lat_max: 90.0
+driver:
+  grid:
+    nx: 144           # 2.5° longitude resolution
+    ny: 91            # 2° latitude resolution
+    lon_min: -180.0
+    lon_max: 177.5
+    lat_min: -90.0
+    lat_max: 90.0
 ```
 
 ---
@@ -536,7 +536,7 @@ Configuration for TIDE (Temporal Interpolation & Data Extraction) data streams f
 | `yearAlign` | Integer | Simulation year to align with data |
 | `taxmode` | String | Time axis mode: `cycle`, `extend`, or `limit` |
 | `tintalgo` | String | Temporal interpolation: `linear`, `nearest`, or `bpch` |
-| `mapalgo` | String | Spatial regridding: `consd`, `bilinear`, or `patch` |
+| `mapalgo` | String | Spatial regridding: `consd`, `bilinear`, `consf`, `nn`, `redist`, or `passthrough` (skip regridding — data must be on the model grid already, sizes are validated) |
 | `variables` | List | Variable mappings between file and model |
 
 ### Variable Mapping

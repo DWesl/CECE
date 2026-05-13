@@ -16,6 +16,7 @@ module dshr_strdata_mod
   use ESMF             , only : ESMF_TimeIntervalGet, ESMF_TYPEKIND_R8, ESMF_FieldCreate
   use ESMF             , only : ESMF_FILEFORMAT_ESMFMESH, ESMF_FILEFORMAT_GRIDSPEC, ESMF_FieldCreate
   use ESMF             , only : ESMF_FieldBundleCreate, ESMF_MESHLOC_ELEMENT, ESMF_STAGGERLOC_CENTER, ESMF_FieldBundleAdd
+  use ESMF             , only : ESMF_STAGGERLOC_CORNER
   use ESMF             , only : ESMF_POLEMETHOD_ALLAVG, ESMF_EXTRAPMETHOD_NEAREST_STOD
   use ESMF             , only : ESMF_REGRIDMETHOD_BILINEAR, ESMF_REGRIDMETHOD_NEAREST_STOD
   use ESMF             , only : ESMF_REGRIDMETHOD_CONSERVE, ESMF_NORMTYPE_FRACAREA, ESMF_NORMTYPE_DSTAREA
@@ -24,7 +25,7 @@ module dshr_strdata_mod
   use ESMF             , only : ESMF_TERMORDER_SRCSEQ, ESMF_FieldRegrid, ESMF_FieldFill, ESMF_FieldIsCreated
   use ESMF             , only : ESMF_REGION_TOTAL, ESMF_FieldGet, ESMF_TraceRegionExit, ESMF_TraceRegionEnter
   use ESMF             , only : ESMF_LOGMSG_INFO, ESMF_LogWrite
-  use shr_kind_mod     , only : r8=>shr_kind_r8, r4=>shr_kind_r4, i2=>shr_kind_I2
+  use shr_kind_mod     , only : r8=>shr_kind_r8, r4=>shr_kind_r4, i2=>shr_kind_I2, i8=>shr_kind_i8
   use shr_kind_mod     , only : cs=>shr_kind_cs, cl=>shr_kind_cl, cxx=>shr_kind_cxx, cx=>shr_kind_cx
   use shr_sys_mod      , only : shr_sys_abort
   use shr_const_mod    , only : shr_const_pi, shr_const_cDay, shr_const_spval
@@ -71,6 +72,8 @@ module dshr_strdata_mod
   public  :: shr_strdata_get_stream_count
   public  :: shr_strdata_get_stream_fieldbundle
   public  :: shr_strdata_print
+
+  public  :: shr_strdata_set_debug_level
 
   private :: shr_strdata_init_model_domain
   private :: shr_strdata_get_stream_nlev
@@ -402,7 +405,7 @@ contains
     type(ESMF_Field)             :: lfield          ! temporary
     type(ESMF_Field)             :: lfield_dst      ! temporary
     integer                      :: srcTermProcessing_Value = 0 ! should this be a module variable?
-    integer                      :: localpet
+    integer                      :: localPet
     logical                      :: fileExists
     type(ESMF_VM)                :: vm
     logical                      :: mainproc
@@ -410,13 +413,14 @@ contains
     integer                      :: i, stream_nlev, index
     character(CL)                :: stream_vector_names
     character(len=*), parameter  :: subname='(shr_sdat_init)'
+    integer(i8)                   :: t0, t1, tick_rate
     ! ----------------------------------------------
 
     rc = ESMF_SUCCESS
 
     call ESMF_VmGetCurrent(vm, rc=rc)
     call ESMF_VMGet(vm, localpet=localPet, rc=rc)
-    mainproc= (localPet==main_task)
+    mainproc = (localPet == main_task)
 
     ! Loop over streams
     do ns = 1,shr_strdata_get_stream_count(sdat)
@@ -463,7 +467,12 @@ contains
           endif
 
           rc = ESMF_SUCCESS
+          call system_clock(t0, tick_rate)
           call shr_strdata_create_grid_from_netcdf(sdat%pio_subsystem, sdat%io_type, trim(filename), stream_grid, rc)
+          call system_clock(t1)
+          if (mainproc) write(sdat%stream(1)%logunit,'(a,f8.2,a)') &
+               trim(subname)//' INFO: shr_strdata_create_grid_from_netcdf took ', &
+               real(t1-t0)/real(tick_rate), ' s'
           rc = ESMF_SUCCESS
        endif
 
@@ -597,6 +606,9 @@ contains
           sdat%stream(ns)%mapalgo = 'none'
        else
           if (trim(sdat%stream(ns)%mapalgo) == "bilinear") then
+             if (mainproc) write(sdat%stream(1)%logunit,'(a)') &
+                  trim(subname)//' INFO: building bilinear route handle ...'
+             call system_clock(t0, tick_rate)
              call ESMF_FieldRegridStore(sdat%pstrm(ns)%field_stream, lfield_dst, &
                   routehandle=sdat%pstrm(ns)%routehandle, &
                   regridmethod=ESMF_REGRIDMETHOD_BILINEAR,  &
@@ -606,12 +618,24 @@ contains
                   srcMaskValues=(/sdat%stream(ns)%src_mask_val/), &
                   srcTermProcessing=srcTermProcessing_Value, ignoreDegenerate=.true., rc=rc)
              if (chkerr(rc,__LINE__,u_FILE_u)) return
+             call system_clock(t1)
+             if (mainproc) write(sdat%stream(1)%logunit,'(a,f8.2,a)') &
+                  trim(subname)//' INFO: bilinear RegridStore took ', real(t1-t0)/real(tick_rate), ' s'
           else if (trim(sdat%stream(ns)%mapalgo) == 'redist') then
+             if (mainproc) write(sdat%stream(1)%logunit,'(a)') &
+                  trim(subname)//' INFO: building redist route handle ...'
+             call system_clock(t0, tick_rate)
              call ESMF_FieldRedistStore(sdat%pstrm(ns)%field_stream, lfield_dst, &
                   routehandle=sdat%pstrm(ns)%routehandle, &
                   ignoreUnmatchedIndices = .true., rc=rc)
              if (chkerr(rc,__LINE__,u_FILE_u)) return
+             call system_clock(t1)
+             if (mainproc) write(sdat%stream(1)%logunit,'(a,f8.2,a)') &
+                  trim(subname)//' INFO: redist RedistStore took ', real(t1-t0)/real(tick_rate), ' s'
           else if (trim(sdat%stream(ns)%mapalgo) == 'nn') then
+             if (mainproc) write(sdat%stream(1)%logunit,'(a)') &
+                  trim(subname)//' INFO: building nn route handle ...'
+             call system_clock(t0, tick_rate)
              call ESMF_FieldReGridStore(sdat%pstrm(ns)%field_stream, lfield_dst, &
                   routehandle=sdat%pstrm(ns)%routehandle, &
                   regridmethod=ESMF_REGRIDMETHOD_NEAREST_STOD, &
@@ -619,7 +643,14 @@ contains
                   srcMaskValues=(/sdat%stream(ns)%src_mask_val/), &
                   srcTermProcessing=srcTermProcessing_Value, ignoreDegenerate=.true., &
                   unmappedaction=ESMF_UNMAPPEDACTION_IGNORE, rc=rc)
+             if (chkerr(rc,__LINE__,u_FILE_u)) return
+             call system_clock(t1)
+             if (mainproc) write(sdat%stream(1)%logunit,'(a,f8.2,a)') &
+                  trim(subname)//' INFO: nn RegridStore took ', real(t1-t0)/real(tick_rate), ' s'
           else if (trim(sdat%stream(ns)%mapalgo) == 'consf') then
+             if (mainproc) write(sdat%stream(1)%logunit,'(a)') &
+                  trim(subname)//' INFO: building consf route handle ...'
+             call system_clock(t0, tick_rate)
              call ESMF_FieldReGridStore(sdat%pstrm(ns)%field_stream, lfield_dst, &
                   routehandle=sdat%pstrm(ns)%routehandle, &
                   regridmethod=ESMF_REGRIDMETHOD_CONSERVE, &
@@ -628,7 +659,14 @@ contains
                   srcMaskValues=(/sdat%stream(ns)%src_mask_val/), &
                   srcTermProcessing=srcTermProcessing_Value, ignoreDegenerate=.true., &
                   unmappedaction=ESMF_UNMAPPEDACTION_IGNORE, rc=rc)
+             if (chkerr(rc,__LINE__,u_FILE_u)) return
+             call system_clock(t1)
+             if (mainproc) write(sdat%stream(1)%logunit,'(a,f8.2,a)') &
+                  trim(subname)//' INFO: consf RegridStore took ', real(t1-t0)/real(tick_rate), ' s'
           else if (trim(sdat%stream(ns)%mapalgo) == 'consd') then
+             if (mainproc) write(sdat%stream(1)%logunit,'(a)') &
+                  trim(subname)//' INFO: building consd route handle ...'
+             call system_clock(t0, tick_rate)
              call ESMF_FieldReGridStore(sdat%pstrm(ns)%field_stream, lfield_dst, &
                   routehandle=sdat%pstrm(ns)%routehandle, &
                   regridmethod=ESMF_REGRIDMETHOD_CONSERVE, &
@@ -637,8 +675,15 @@ contains
                   srcMaskValues=(/sdat%stream(ns)%src_mask_val/), &
                   srcTermProcessing=srcTermProcessing_Value, ignoreDegenerate=.true., &
                   unmappedaction=ESMF_UNMAPPEDACTION_IGNORE, rc=rc)
+             if (chkerr(rc,__LINE__,u_FILE_u)) return
+             call system_clock(t1)
+             if (mainproc) write(sdat%stream(1)%logunit,'(a,f8.2,a)') &
+                  trim(subname)//' INFO: consd RegridStore took ', real(t1-t0)/real(tick_rate), ' s'
           else if (trim(sdat%stream(ns)%mapalgo) == 'none') then
              ! single point stream data, no action required.
+          else if (trim(sdat%stream(ns)%mapalgo) == 'passthrough') then
+             ! Data is already on the model grid - skip regridding entirely.
+             ! A size check against the destination field is performed at first read.
           else
              call shr_sys_abort('ERROR: map algo '//trim(sdat%stream(ns)%mapalgo)//' is not supported')
           end if
@@ -1316,7 +1361,6 @@ contains
     character(*),parameter ::   F90 = "('(shr_strdata_print) ',58('-'))"
     !-------------------------------------------------------------------------------
 
-    write(sdat%stream(1)%logunit,*)
     write(sdat%stream(1)%logunit,F90)
     write(sdat%stream(1)%logunit,F00) "name        = ",trim(name)
     write(sdat%stream(1)%logunit,F00) "calendar    = ",trim(sdat%model_calendar)
@@ -1336,7 +1380,6 @@ contains
        write(sdat%stream(1)%logunit,F03) "  vectors (",ns,") = ",trim(sdat%stream(ns)%stream_vectors)
        write(sdat%stream(1)%logunit,F06) "  src_mask(",ns,") = ",sdat%stream(ns)%src_mask_val
        write(sdat%stream(1)%logunit,F06) "  dst_mask(",ns,") = ",sdat%stream(ns)%dst_mask_val
-       write(sdat%stream(1)%logunit,F01) " "
     end do
     write(sdat%stream(1)%logunit,F90)
 
@@ -1553,6 +1596,7 @@ contains
     character(*), parameter  :: F00   = "('(shr_strdata_readstrm) ',8a)"
     character(*), parameter  :: F02   = "('(shr_strdata_readstrm) ',2a,i8)"
     character(CL)            :: errmsg
+    integer(i8)               :: t0_read, t1_read, tick_rate_read
     !-------------------------------------------------------------------------------
 
     rc = ESMF_SUCCESS
@@ -1929,41 +1973,41 @@ contains
        elseif(associated(dataptr2d_src) .and. trim(per_stream%fldlist_model(nf)) .eq. vname) then
           dataptr2d_src(2,:) = dataptr1d(:)
        else if (per_stream%stream_pio_iodesc_set) then
-          ! Regrid the field_stream read in to the model mesh
+          ! Regrid (or copy) the field_stream read in to the model mesh
           call dshr_fldbun_getfieldN(fldbun_data, nf, field_dst, rc=rc)
           if (chkerr(rc,__LINE__,u_FILE_u)) return
 
-          call ESMF_FieldRegrid(per_stream%field_stream, field_dst, routehandle=per_stream%routehandle, &
-               termorderflag=ESMF_TERMORDER_SRCSEQ, checkflag=.false., zeroregion=ESMF_REGION_TOTAL, rc=rc)
-
-          if (sdat%mainproc) then
+          if (trim(stream%mapalgo) == 'passthrough') then
+             ! No regridding: directly copy data and validate matching sizes.
              block
-               real(r8), pointer :: dptr(:) => null()
-               real(r8) :: dmin, dmax, dsum
-               integer :: k, sz
-
-               call ESMF_FieldGet(field_dst, farrayPtr=dptr, rc=rc)
-               if (rc /= ESMF_SUCCESS) then
-                  print *, "DEBUG: ESMF_FieldGet(field_dst) failed with rc=", rc
-               else
-                  if (associated(dptr)) then
-                    sz = size(dptr)
-                    if (sz > 0) then
-                       dmin = minval(dptr)
-                       dmax = maxval(dptr)
-                       dsum = sum(dptr)
-                       print *, "DEBUG: post-regrid field_dst: size=", sz, " min=", dmin, " max=", dmax, " sum=", dsum
-                    else
-                       print *, "DEBUG: post-regrid field_dst: size=0"
-                    endif
-                  else
-                    print *, "DEBUG: field_dst pointer not associated"
-                  endif
-               endif
+               real(r8), pointer :: dst_ptr(:) => null()
+               call dshr_field_getfldptr(field_dst, fldptr1=dst_ptr, rc=rc)
+               if (chkerr(rc,__LINE__,u_FILE_u)) return
+               if (size(dataptr1d) /= size(dst_ptr)) then
+                  write(errmsg,'(a,i0,a,i0,a)') &
+                       'ERROR: passthrough mapalgo: stream size (', size(dataptr1d), &
+                       ') does not match model grid size (', size(dst_ptr), ')'
+                  call shr_sys_abort(trim(errmsg))
+               end if
+               dst_ptr(:) = dataptr1d(:)
              end block
-          endif
+          else if (trim(stream%mapalgo) == 'none') then
+             ! Single-point stream: no routehandle was created;
+             ! broadcast the scalar value to the entire destination field.
+             call ESMF_FieldFill(field_dst, dataFillScheme="const", const1=dataptr1d(1), rc=rc)
+             if (chkerr(rc,__LINE__,u_FILE_u)) return
+          else
+             call system_clock(t0_read, tick_rate_read)
+             call ESMF_FieldRegrid(per_stream%field_stream, field_dst, routehandle=per_stream%routehandle, &
+                  termorderflag=ESMF_TERMORDER_SRCSEQ, checkflag=.false., zeroregion=ESMF_REGION_TOTAL, rc=rc)
+             call system_clock(t1_read)
+             if (sdat%mainproc) then
+               write(sdat%stream(1)%logunit,'(a,a,f8.3,a)') trim(subname), &
+                 'INFO: ESMF_FieldRegrid (', real(t1_read-t0_read)/real(tick_rate_read), ' s)'
+             end if
 
-          if (chkerr(rc,__LINE__,u_FILE_u)) return
+             if (chkerr(rc,__LINE__,u_FILE_u)) return
+          end if
        else
           call dshr_fldbun_getfieldN(fldbun_data, nf, field_dst, rc=rc)
           if (chkerr(rc,__LINE__,u_FILE_u)) return
@@ -2301,18 +2345,28 @@ contains
     integer, intent(out) :: rc
 
     type(file_desc_t) :: pioid
-    type(var_desc_t) :: lat_vid, lon_vid
+    type(var_desc_t) :: lat_vid, lon_vid, latbnds_vid, lonbnds_vid
     integer :: rcode, status
     integer :: nlat, nlon, ndims_lat, ndims_lon
     integer :: dimids(2)
-    integer :: nx, ny
-    real(r8), allocatable :: lats1d(:), lons1d(:), lats2d(:,:), lons2d(:,:)
+    integer :: nx, ny, i, j
+    real(r8), allocatable :: lats1d(:), lons1d(:)
+    real(r8), allocatable :: lat_bnds(:,:), lon_bnds(:,:)  ! shape (2, n)
+    real(r8), allocatable :: corner_lons(:), corner_lats(:)
     real(r8), pointer :: grid_lon(:,:), grid_lat(:,:)
     type(ESMF_DistGrid) :: distgrid
+    type(ESMF_VM) :: vm
     integer :: localPet
     logical :: mainproc
+    logical :: has_lon_bnds, has_lat_bnds
+    integer(i8) :: t0_gc, t1_gc, tick_rate_gc
 
     rc = ESMF_SUCCESS
+
+    call ESMF_VMGetCurrent(vm, rc=rc)
+    call ESMF_VMGet(vm, localPet=localPet, rc=rc)
+    mainproc = (localPet == main_task)
+
     rcode = pio_openfile(pio_subsystem, pioid, io_type, trim(filename), pio_nowrite)
     if (rcode /= PIO_NOERR) then
        rc = ESMF_FAILURE
@@ -2327,6 +2381,13 @@ contains
     rcode = pio_inq_varid(pioid, 'lon', lon_vid)
     if (rcode /= PIO_NOERR) rcode = pio_inq_varid(pioid, 'longitude', lon_vid)
     if (rcode /= PIO_NOERR) rcode = pio_inq_varid(pioid, 'LON', lon_vid)
+
+    ! Check for CF bounds variables
+    has_lat_bnds = (pio_inq_varid(pioid, 'lat_bnds',  latbnds_vid) == PIO_NOERR)
+    if (.not. has_lat_bnds) has_lat_bnds = (pio_inq_varid(pioid, 'lat_bounds', latbnds_vid) == PIO_NOERR)
+
+    has_lon_bnds = (pio_inq_varid(pioid, 'lon_bnds',  lonbnds_vid) == PIO_NOERR)
+    if (.not. has_lon_bnds) has_lon_bnds = (pio_inq_varid(pioid, 'lon_bounds', lonbnds_vid) == PIO_NOERR)
 
     ! Get dimensions
     rcode = pio_inq_varndims(pioid, lat_vid, ndims_lat)
@@ -2345,35 +2406,98 @@ contains
        rcode = pio_inq_dimlen(pioid, dimids(1), nx)
     endif
 
-    ! Create DistGrid
+    ! Create DistGrid — corners need (nx+1, ny+1) nodes when bounds are present
     distgrid = ESMF_DistGridCreate(minIndex=(/1,1/), maxIndex=(/nx,ny/), rc=rc)
 
-    ! Create Grid
-    stream_grid = ESMF_GridCreate(distgrid, coordSys=ESMF_COORDSYS_SPH_DEG, &
-         gridEdgeLWidth=(/0,0/), gridEdgeUWidth=(/0,0/), rc=rc)
+    ! Create Grid.  When bounds are available, allow extra upper edge points for
+    ! the CORNER staggerloc so all (nx+1)×(ny+1) cell corners can be populated.
+    if (has_lon_bnds .and. has_lat_bnds) then
+      stream_grid = ESMF_GridCreate(distgrid, coordSys=ESMF_COORDSYS_SPH_DEG, &
+           gridEdgeLWidth=(/0,0/), gridEdgeUWidth=(/1,1/), rc=rc)
+    else
+      stream_grid = ESMF_GridCreate(distgrid, coordSys=ESMF_COORDSYS_SPH_DEG, &
+           gridEdgeLWidth=(/0,0/), gridEdgeUWidth=(/0,0/), rc=rc)
+    end if
 
-    ! Add Coordinates
+    ! Add center coordinates
     call ESMF_GridAddCoord(stream_grid, staggerloc=ESMF_STAGGERLOC_CENTER, rc=rc)
 
-    ! Allocate and read
+    ! Allocate and read 1-D center coordinates
     allocate(lats1d(ny))
     allocate(lons1d(nx))
 
-    ! Using pio_get_var to read entire variable (replicated)
-    ! Note: This assumes small enough grid to fit in memory on all tasks
-    ! Also assumes 1D coordinates for now as per MACCity file
     status = pio_get_var(pioid, lat_vid, lats1d)
     status = pio_get_var(pioid, lon_vid, lons1d)
 
-    ! Get pointers to Grid - moved inside loop in fill_grid_coords
-    ! call ESMF_GridGetCoord(stream_grid, coordDim=1, staggerloc=ESMF_STAGGERLOC_CENTER, &
-    !      farrayptr=grid_lon, rc=rc)
-    ! call ESMF_GridGetCoord(stream_grid, coordDim=2, staggerloc=ESMF_STAGGERLOC_CENTER, &
-    !      farrayptr=grid_lat, rc=rc)
-
-    ! Initialzie grid coordinates from 1D arrays (broadcast to 2D)
-
+    call system_clock(t0_gc, tick_rate_gc)
     call fill_grid_coords(stream_grid, lons1d, lats1d, nx, ny, rc)
+    call system_clock(t1_gc)
+    if (mainproc) then
+      write(*,'(a,i0,a,i0,a,f6.2,a)') &
+        'INFO: [TIDE] fill_grid_coords (', nx, 'x', ny, ') took ', &
+        real(t1_gc-t0_gc)/real(tick_rate_gc), ' s'
+    end if
+
+    ! -----------------------------------------------------------------------
+    ! Populate corner staggerloc — required by conservative regridding.
+    ! Prefer CF bounds variables (lon_bnds/lat_bnds) when present; otherwise
+    ! synthesize from cell-centre coordinates by half-cell extrapolation.
+    ! The synthesized corners are exact for uniform grids and a good
+    ! approximation for mildly non-uniform ones.
+    ! -----------------------------------------------------------------------
+    call ESMF_GridAddCoord(stream_grid, staggerloc=ESMF_STAGGERLOC_CORNER, rc=rc)
+
+    allocate(corner_lons(nx+1))
+    allocate(corner_lats(ny+1))
+
+    if (has_lon_bnds .and. has_lat_bnds) then
+      allocate(lon_bnds(2, nx))
+      allocate(lat_bnds(2, ny))
+      status = pio_get_var(pioid, lonbnds_vid, lon_bnds)
+      status = pio_get_var(pioid, latbnds_vid, lat_bnds)
+      do i = 1, nx
+        corner_lons(i) = lon_bnds(1, i)
+      end do
+      corner_lons(nx+1) = lon_bnds(2, nx)
+      do j = 1, ny
+        corner_lats(j) = lat_bnds(1, j)
+      end do
+      corner_lats(ny+1) = lat_bnds(2, ny)
+      deallocate(lon_bnds, lat_bnds)
+    else
+      ! Synthesize corners by half-cell extrapolation from centre coordinates.
+      if (nx >= 2) then
+        corner_lons(1) = lons1d(1) - 0.5_r8 * (lons1d(2) - lons1d(1))
+        do i = 2, nx
+          corner_lons(i) = 0.5_r8 * (lons1d(i-1) + lons1d(i))
+        end do
+        corner_lons(nx+1) = lons1d(nx) + 0.5_r8 * (lons1d(nx) - lons1d(nx-1))
+      else
+        corner_lons(1) = lons1d(1) - 0.5_r8
+        corner_lons(2) = lons1d(1) + 0.5_r8
+      end if
+      if (ny >= 2) then
+        corner_lats(1) = lats1d(1) - 0.5_r8 * (lats1d(2) - lats1d(1))
+        do j = 2, ny
+          corner_lats(j) = 0.5_r8 * (lats1d(j-1) + lats1d(j))
+        end do
+        corner_lats(ny+1) = lats1d(ny) + 0.5_r8 * (lats1d(ny) - lats1d(ny-1))
+      else
+        corner_lats(1) = lats1d(1) - 0.5_r8
+        corner_lats(2) = lats1d(1) + 0.5_r8
+      end if
+    end if
+
+    call system_clock(t0_gc, tick_rate_gc)
+    call fill_grid_corner_coords(stream_grid, corner_lons, corner_lats, nx, ny, rc)
+    call system_clock(t1_gc)
+    if (mainproc) then
+      write(*,'(a,f6.2,a,L1,a)') &
+        'INFO: [TIDE] fill_grid_corner_coords took ', &
+        real(t1_gc-t0_gc)/real(tick_rate_gc), ' s (from_bnds=', &
+        has_lon_bnds .and. has_lat_bnds, ')'
+    end if
+    deallocate(corner_lons, corner_lats)
 
     call pio_closefile(pioid)
     deallocate(lats1d, lons1d)
@@ -2393,10 +2517,6 @@ contains
 
     call ESMF_GridGet(grid, distgrid=distgrid, rc=rc)
     call ESMF_DistGridGet(distgrid, localDeCount=deCount, rc=rc)
-
-    print *, "DEBUG: fill_grid_coords: nx=", nx, " ny=", ny, &
-         " lons range:", minval(lons1d), maxval(lons1d), &
-         " lats range:", minval(lats1d), maxval(lats1d)
 
     allocate(lb(2), ub(2))
 
@@ -2422,5 +2542,50 @@ contains
     enddo
     deallocate(lb, ub)
   end subroutine fill_grid_coords
+
+  ! Fill ESMF_STAGGERLOC_CORNER coordinates from (nx+1) × (ny+1) 1-D arrays.
+  subroutine fill_grid_corner_coords(grid, corner_lons, corner_lats, nx, ny, rc)
+    type(ESMF_Grid), intent(in) :: grid
+    real(r8), intent(in) :: corner_lons(:)   ! size nx+1
+    real(r8), intent(in) :: corner_lats(:)   ! size ny+1
+    integer, intent(in) :: nx, ny
+    integer, intent(out) :: rc
+
+    type(ESMF_DistGrid) :: distgrid
+    integer :: deCount, de, i, j
+    integer, allocatable :: lb(:), ub(:)
+    real(r8), pointer :: grid_lon(:,:), grid_lat(:,:)
+
+    call ESMF_GridGet(grid, distgrid=distgrid, rc=rc)
+    call ESMF_DistGridGet(distgrid, localDeCount=deCount, rc=rc)
+
+    allocate(lb(2), ub(2))
+
+    do de = 0, deCount-1
+      call ESMF_GridGet(grid, localDe=de, staggerloc=ESMF_STAGGERLOC_CORNER, &
+           computationalLBound=lb, computationalUBound=ub, rc=rc)
+
+      call ESMF_GridGetCoord(grid, coordDim=1, localDe=de, staggerloc=ESMF_STAGGERLOC_CORNER, &
+           farrayptr=grid_lon, rc=rc)
+      call ESMF_GridGetCoord(grid, coordDim=2, localDe=de, staggerloc=ESMF_STAGGERLOC_CORNER, &
+           farrayptr=grid_lat, rc=rc)
+
+      do j = lb(2), ub(2)
+        do i = lb(1), ub(1)
+          if (i >= 1 .and. i <= nx+1 .and. j >= 1 .and. j <= ny+1) then
+            grid_lon(i - lb(1) + lbound(grid_lon, 1), j - lb(2) + lbound(grid_lon, 2)) = corner_lons(i)
+            grid_lat(i - lb(1) + lbound(grid_lat, 1), j - lb(2) + lbound(grid_lat, 2)) = corner_lats(j)
+          end if
+        end do
+      end do
+    end do
+    deallocate(lb, ub)
+  end subroutine fill_grid_corner_coords
+
+  !===============================================================================
+  subroutine shr_strdata_set_debug_level(level)
+    integer, intent(in) :: level
+    debug = level
+  end subroutine shr_strdata_set_debug_level
 
 end module dshr_strdata_mod

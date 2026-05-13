@@ -115,18 +115,18 @@ struct CeceDataStreamConfig {
     std::vector<CeceDataVariableConfig> variables;  ///< Variables to read from this stream.
     std::string taxmode = "cycle";                  ///< Time axis mode (cycle, extend, etc.).
     std::string tintalgo = "linear";                ///< Time interpolation algorithm.
-    std::string mapalgo = "bilinear";               ///< Spatial mapping algorithm (default: bilinear for robustness).
-    int dtlimit = 1500000000;                       ///< Delta time limit in seconds.
-    int yearFirst = 1;                              ///< First year in data.
-    int yearLast = 1;                               ///< Last year in data.
-    int yearAlign = 1;                              ///< Year to align with model time.
-    int offset = 0;                                 ///< Time offset in seconds.
-    std::string meshfile;                           ///< Path to source mesh file.
-    std::string lev_dimname = "lev";                ///< Name of vertical dimension.
-    std::string time_var = "time";                  ///< Name of time coordinate variable.
-    std::string lon_var = "lon";                    ///< Name of longitude coordinate variable.
-    std::string lat_var = "lat";                    ///< Name of latitude coordinate variable.
-    int refresh_interval_seconds = 0;               ///< Refresh interval in seconds (0 means use base timestep).
+    std::string mapalgo =
+        "bilinear";            ///< Spatial mapping algorithm: bilinear, consd, consf, nn, redist, passthrough (skip regridding, same-grid data).
+    int dtlimit = 1500000000;  ///< Delta time limit in seconds.
+    int yearFirst = 1;         ///< First year in data.
+    int yearLast = 1;          ///< Last year in data.
+    int yearAlign = 1;         ///< Year to align with model time.
+    int offset = 0;            ///< Time offset in seconds.
+    std::string meshfile;      ///< Path to source mesh file.
+    std::string lev_dimname = "lev";  ///< Name of vertical dimension.
+    std::string time_var = "time";    ///< Name of time coordinate variable.
+    std::string lon_var = "lon";      ///< Name of longitude coordinate variable.
+    std::string lat_var = "lat";      ///< Name of latitude coordinate variable.
 };
 
 /**
@@ -135,6 +135,7 @@ struct CeceDataStreamConfig {
  */
 struct CeceDataConfig {
     std::vector<CeceDataStreamConfig> streams;  ///< List of input streams.
+    int debug_level = 0;                        ///< TIDE/strdata debug verbosity level (0=off, 1=time-matching info).
 };
 
 /**
@@ -171,6 +172,7 @@ struct DiagnosticConfig {
 struct DriverGridConfig {
     int nx = 4;               ///< Grid points in X direction (default: 4).
     int ny = 4;               ///< Grid points in Y direction (default: 4).
+    int nz = 1;               ///< Grid points in Z (vertical) direction (default: 1).
     double lon_min = -135.0;  ///< Minimum longitude (default: -135.0).
     double lon_max = 135.0;   ///< Maximum longitude (default: 135.0).
     double lat_min = -67.5;   ///< Minimum latitude (default: -67.5).
@@ -185,9 +187,9 @@ struct DriverConfig {
     std::string start_time = "2020-01-01T00:00:00";  ///< ISO8601 start time (default: 2020-01-01T00:00:00).
     std::string end_time = "2020-01-02T00:00:00";    ///< ISO8601 end time (default: 2020-01-02T00:00:00).
     int timestep_seconds = 3600;                     ///< Timestep in seconds (default: 3600).
-    std::string mesh_file;                           ///< Path to ESMF mesh file (optional, default: null).
-    DriverGridConfig grid;                           ///< Grid configuration for generated Gaussian grid.
-    int stacking_refresh_interval_seconds = 0;       ///< Stacking engine refresh interval in seconds (0 means use base timestep).
+    std::string
+        gridspec_file;      ///< Path to ESMF GRIDSPEC NetCDF file (optional). If set, loaded instead of generating a grid from driver.grid params.
+    DriverGridConfig grid;  ///< Grid configuration for generated Gaussian grid.
 };
 
 /**

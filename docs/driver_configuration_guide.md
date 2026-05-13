@@ -14,7 +14,7 @@ driver:
   end_time: "2020-01-02T00:00:00"        # ISO8601 format (optional, default: 2020-01-02T00:00:00)
   timestep_seconds: 3600                 # Positive integer (optional, default: 3600)
   stacking_refresh_interval_seconds: 0   # Positive multiple of timestep_seconds (optional, default: 0 = use timestep_seconds)
-  mesh_file: null                        # Path to ESMF mesh file (optional, default: null - generate grid)
+  gridspec_file: null                    # Path to ESMF GRIDSPEC NetCDF file (optional, default: null - generate grid)
   grid:
     nx: 4                                # Positive integer (optional, default: 4)
     ny: 4                                # Positive integer (optional, default: 4)
@@ -61,6 +61,7 @@ driver:
   timestep_seconds: 1800  # 30 minutes
 ```
 
+<<<<<<< feature/advanced_clock
 ### stacking_refresh_interval_seconds
 
 **Type:** Integer
@@ -76,15 +77,18 @@ driver:
 ```
 
 ### mesh_file
+=======
+### gridspec_file
+>>>>>>> main
 
 **Type:** String (file path) or null
 **Default:** `null`
-**Description:** Path to ESMF mesh file for spatial discretization. If null or absent, a Gaussian grid is generated based on grid.nx and grid.ny.
+**Description:** Path to an ESMF GRIDSPEC NetCDF file for spatial discretization. If set, the grid is loaded from this file and grid generation is skipped. Generate one with `scripts/cece_make_gridspec.py`.
 
 **Example:**
 ```yaml
 driver:
-  mesh_file: "/path/to/mesh.nc"
+  gridspec_file: "/path/to/grid.nc"
 ```
 
 ### grid.nx
@@ -92,7 +96,7 @@ driver:
 **Type:** Integer
 **Range:** > 0
 **Default:** `4`
-**Description:** Number of grid points in X direction (longitude). Only used if mesh_file is null.
+**Description:** Number of grid points in X direction (longitude). Only used if gridspec_file is null.
 
 **Example:**
 ```yaml
@@ -106,7 +110,7 @@ driver:
 **Type:** Integer
 **Range:** > 0
 **Default:** `4`
-**Description:** Number of grid points in Y direction (latitude). Only used if mesh_file is null.
+**Description:** Number of grid points in Y direction (latitude). Only used if gridspec_file is null.
 
 **Example:**
 ```yaml
@@ -190,7 +194,7 @@ driver:
   start_time: "2020-01-01T00:00:00"
   end_time: "2020-01-02T00:00:00"
   timestep_seconds: 3600
-  mesh_file: null
+  gridspec_file: null
   grid:
     nx: 4
     ny: 4
@@ -206,22 +210,25 @@ The driver validates configuration parameters and exits with error if:
 2. **Start time >= end time:** Start time must be strictly before end time
 3. **Non-positive timestep:** Timestep must be > 0 seconds
 4. **Invalid grid dimensions:** nx and ny must be > 0
+<<<<<<< feature/advanced_clock
 5. **Missing mesh file:** If mesh_file is specified, the file must exist and be valid
 6. **Invalid refresh interval:** Any `refresh_interval_seconds` or `stacking_refresh_interval_seconds` must be a positive integer multiple of `timestep_seconds`. Error messages name the offending component.
+=======
+5. **Missing gridspec file:** If gridspec_file is specified, the file must exist and be a valid ESMF GRIDSPEC NetCDF file
+>>>>>>> main
 
 ## Grid/Mesh Selection Logic
 
 The driver uses the following logic to select spatial discretization:
 
-1. **If mesh_file is specified and valid:**
-   - Read ESMF mesh from file
-   - Use mesh for spatial discretization
+1. **If gridspec_file is specified and valid:**
+   - Load ESMF Grid from GRIDSPEC NetCDF file
    - Skip grid generation
-   - Log mesh file source and dimensions
+   - Log gridspec file source
 
-2. **If mesh_file is null or absent:**
-   - Generate Gaussian grid based on grid.nx and grid.ny
-   - Create mesh from grid with proper node/element connectivity
+2. **If gridspec_file is null or absent:**
+   - Generate structured grid based on grid.nx and grid.ny
+   - Create mesh from grid params for TIDE regridding
    - Log grid configuration to stdout
 
 3. **In coupled mode:**
@@ -257,20 +264,20 @@ driver:
   start_time: "2020-01-01T00:00:00"
   end_time: "2020-01-02T00:00:00"
   timestep_seconds: 3600
-  mesh_file: null
+  gridspec_file: null
   grid:
     nx: 360
     ny: 180
 ```
 
-### Mesh File Configuration
+### GRIDSPEC File Configuration
 
 ```yaml
 driver:
   start_time: "2020-01-01T00:00:00"
   end_time: "2020-01-02T00:00:00"
   timestep_seconds: 3600
-  mesh_file: "/path/to/mesh.nc"
+  gridspec_file: "/path/to/grid.nc"
 ```
 
 ### Large Grid Configuration
@@ -350,10 +357,10 @@ ERROR: [Driver] Mesh file not found: /path/to/mesh.nc
 **Problem:** "Failed to create grid"
 **Solution:** Verify grid.nx > 0 and grid.ny > 0
 
-### Mesh File Issues
+### GRIDSPEC File Issues
 
-**Problem:** "Failed to read mesh file"
-**Solution:** Verify mesh_file path exists and is a valid ESMF mesh file
+**Problem:** "Failed to load GRIDSPEC file"
+  gridspec_file path does not exist or is not a valid GRIDSPEC NetCDF file
 
 ### MPI Synchronization Issues
 

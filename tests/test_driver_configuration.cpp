@@ -146,7 +146,7 @@ physics_schemes:
     EXPECT_EQ(config.driver_config.start_time, "2020-01-01T00:00:00");
     EXPECT_EQ(config.driver_config.end_time, "2020-01-02T00:00:00");
     EXPECT_EQ(config.driver_config.timestep_seconds, 3600);
-    EXPECT_TRUE(config.driver_config.mesh_file.empty());
+    EXPECT_TRUE(config.driver_config.gridspec_file.empty());
     EXPECT_EQ(config.driver_config.grid.nx, 4);
     EXPECT_EQ(config.driver_config.grid.ny, 4);
 }
@@ -158,7 +158,7 @@ driver:
   start_time: "2020-06-01T12:00:00"
   end_time: "2020-06-02T12:00:00"
   timestep_seconds: 1800
-  mesh_file: "/path/to/mesh.nc"
+  gridspec_file: "/path/to/mesh.nc"
   grid:
     nx: 8
     ny: 8
@@ -181,7 +181,7 @@ physics_schemes:
     EXPECT_EQ(config.driver_config.start_time, "2020-06-01T12:00:00");
     EXPECT_EQ(config.driver_config.end_time, "2020-06-02T12:00:00");
     EXPECT_EQ(config.driver_config.timestep_seconds, 1800);
-    EXPECT_EQ(config.driver_config.mesh_file, "/path/to/mesh.nc");
+    EXPECT_EQ(config.driver_config.gridspec_file, "/path/to/mesh.nc");
     EXPECT_EQ(config.driver_config.grid.nx, 8);
     EXPECT_EQ(config.driver_config.grid.ny, 8);
 }
@@ -212,9 +212,50 @@ physics_schemes:
     EXPECT_EQ(config.driver_config.start_time, "2020-03-15T06:00:00");
     EXPECT_EQ(config.driver_config.end_time, "2020-01-02T00:00:00");  // Default
     EXPECT_EQ(config.driver_config.timestep_seconds, 3600);           // Default
-    EXPECT_TRUE(config.driver_config.mesh_file.empty());              // Default
+    EXPECT_TRUE(config.driver_config.gridspec_file.empty());          // Default
     EXPECT_EQ(config.driver_config.grid.nx, 16);
     EXPECT_EQ(config.driver_config.grid.ny, 4);  // Default
+}
+
+TEST_F(DriverConfigurationTest, NzDefaultIsOne) {
+    // nz should default to 1 when not specified in config
+    WriteConfigFile(test_config_file, R"(
+driver:
+  grid:
+    nx: 4
+    ny: 4
+
+species:
+  CO:
+    - operation: add
+      field: CO_anthro
+      hierarchy: 0
+      scale: 1.0
+)");
+
+    CeceConfig config = ParseConfig(test_config_file);
+    EXPECT_EQ(config.driver_config.grid.nz, 1);
+}
+
+TEST_F(DriverConfigurationTest, NzParsedFromYAML) {
+    // nz should be read from driver.grid.nz in the YAML
+    WriteConfigFile(test_config_file, R"(
+driver:
+  grid:
+    nx: 8
+    ny: 8
+    nz: 72
+
+species:
+  CO:
+    - operation: add
+      field: CO_anthro
+      hierarchy: 0
+      scale: 1.0
+)");
+
+    CeceConfig config = ParseConfig(test_config_file);
+    EXPECT_EQ(config.driver_config.grid.nz, 72);
 }
 
 // ---------------------------------------------------------------------------
@@ -282,7 +323,7 @@ TEST_F(DriverConfigurationValidationTest, InvalidGridDimensions) {
 // External C function for getting driver config
 extern "C" {
 void cece_core_get_driver_config(const char* config_file, int config_file_len, char* start_time, int start_time_len, char* end_time, int end_time_len,
-                                 int* timestep_seconds, char* mesh_file, int mesh_file_len, int* nx, int* ny, int* rc);
+                                 int* timestep_seconds, char* gridspec_file, int gridspec_file_len, int* nx, int* ny, int* rc);
 }
 
 class DriverConfigCInterfaceTest : public ::testing::Test {
@@ -325,13 +366,13 @@ physics_schemes:
 
     char start_time[64] = {0};
     char end_time[64] = {0};
-    char mesh_file[512] = {0};
+    char gridspec_file[512] = {0};
     int timestep_seconds = 0;
     int nx = 0, ny = 0;
     int rc = 0;
 
     cece_core_get_driver_config(test_config_file.c_str(), test_config_file.length(), start_time, sizeof(start_time), end_time, sizeof(end_time),
-                                &timestep_seconds, mesh_file, sizeof(mesh_file), &nx, &ny, &rc);
+                                &timestep_seconds, gridspec_file, sizeof(gridspec_file), &nx, &ny, &rc);
 
     EXPECT_EQ(rc, 0) << "Expected successful config read";
     EXPECT_EQ(timestep_seconds, 3600);
@@ -363,13 +404,13 @@ physics_schemes:
 
     char start_time[64] = {0};
     char end_time[64] = {0};
-    char mesh_file[512] = {0};
+    char gridspec_file[512] = {0};
     int timestep_seconds = 0;
     int nx = 0, ny = 0;
     int rc = 0;
 
     cece_core_get_driver_config(test_config_file.c_str(), test_config_file.length(), start_time, sizeof(start_time), end_time, sizeof(end_time),
-                                &timestep_seconds, mesh_file, sizeof(mesh_file), &nx, &ny, &rc);
+                                &timestep_seconds, gridspec_file, sizeof(gridspec_file), &nx, &ny, &rc);
 
     EXPECT_EQ(rc, -1) << "Expected validation error for timestep_seconds = 0";
 }
@@ -398,13 +439,13 @@ physics_schemes:
 
     char start_time[64] = {0};
     char end_time[64] = {0};
-    char mesh_file[512] = {0};
+    char gridspec_file[512] = {0};
     int timestep_seconds = 0;
     int nx = 0, ny = 0;
     int rc = 0;
 
     cece_core_get_driver_config(test_config_file.c_str(), test_config_file.length(), start_time, sizeof(start_time), end_time, sizeof(end_time),
-                                &timestep_seconds, mesh_file, sizeof(mesh_file), &nx, &ny, &rc);
+                                &timestep_seconds, gridspec_file, sizeof(gridspec_file), &nx, &ny, &rc);
 
     EXPECT_EQ(rc, -1) << "Expected validation error for negative timestep_seconds";
 }
@@ -420,13 +461,13 @@ grid_ny: 4
 
     char start_time[64] = {0};
     char end_time[64] = {0};
-    char mesh_file[512] = {0};
+    char gridspec_file[512] = {0};
     int timestep_seconds = 0;
     int nx = 0, ny = 0;
     int rc = 0;
 
     cece_core_get_driver_config(test_config_file.c_str(), test_config_file.length(), start_time, sizeof(start_time), end_time, sizeof(end_time),
-                                &timestep_seconds, mesh_file, sizeof(mesh_file), &nx, &ny, &rc);
+                                &timestep_seconds, gridspec_file, sizeof(gridspec_file), &nx, &ny, &rc);
 
     EXPECT_EQ(rc, -1) << "Expected validation error for nx = 0";
 }
@@ -442,13 +483,13 @@ grid_ny: -1
 
     char start_time[64] = {0};
     char end_time[64] = {0};
-    char mesh_file[512] = {0};
+    char gridspec_file[512] = {0};
     int timestep_seconds = 0;
     int nx = 0, ny = 0;
     int rc = 0;
 
     cece_core_get_driver_config(test_config_file.c_str(), test_config_file.length(), start_time, sizeof(start_time), end_time, sizeof(end_time),
-                                &timestep_seconds, mesh_file, sizeof(mesh_file), &nx, &ny, &rc);
+                                &timestep_seconds, gridspec_file, sizeof(gridspec_file), &nx, &ny, &rc);
 
     EXPECT_EQ(rc, -1) << "Expected validation error for negative ny";
 }
@@ -496,7 +537,7 @@ physics_schemes:
     EXPECT_EQ(config.driver_config.start_time, "2020-01-01T00:00:00");
     EXPECT_EQ(config.driver_config.end_time, "2020-01-02T00:00:00");
     EXPECT_EQ(config.driver_config.timestep_seconds, 3600);
-    EXPECT_TRUE(config.driver_config.mesh_file.empty());
+    EXPECT_TRUE(config.driver_config.gridspec_file.empty());
     EXPECT_EQ(config.driver_config.grid.nx, 4);
     EXPECT_EQ(config.driver_config.grid.ny, 4);
 }
