@@ -127,6 +127,7 @@ struct CeceDataStreamConfig {
     std::string time_var = "time";    ///< Name of time coordinate variable.
     std::string lon_var = "lon";      ///< Name of longitude coordinate variable.
     std::string lat_var = "lat";      ///< Name of latitude coordinate variable.
+    int refresh_interval_seconds = 0; ///< Refresh interval in seconds (0 means use base timestep).
 };
 
 /**
@@ -190,6 +191,7 @@ struct DriverConfig {
     std::string
         gridspec_file;      ///< Path to ESMF GRIDSPEC NetCDF file (optional). If set, loaded instead of generating a grid from driver.grid params.
     DriverGridConfig grid;  ///< Grid configuration for generated Gaussian grid.
+    int stacking_refresh_interval_seconds = 0; ///< Stacking engine refresh interval in seconds (0 means use base timestep).
 };
 
 /**
