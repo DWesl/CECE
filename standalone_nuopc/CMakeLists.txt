@@ -40,7 +40,11 @@ if(TARGET MPI::MPI_Fortran)
 endif()
 
 # Allow undefined symbols from shared library (will be resolved at runtime)
-target_link_options(cece_nuopc_app PRIVATE "LINKER:--allow-shlib-undefined")
+if(APPLE)
+  target_link_options(cece_nuopc_app PRIVATE "LINKER:-undefined,dynamic_lookup")
+else()
+  target_link_options(cece_nuopc_app PRIVATE "LINKER:--allow-shlib-undefined")
+endif()
 
 # Ensure Fortran modules from cece are available before building the app
 if(TARGET cece)

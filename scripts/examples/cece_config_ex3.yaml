@@ -1,0 +1,17 @@
+species:
+  co:
+    - field: "MACCITY_CO"
+      category: "anthropogenic"
+      hierarchy: 1
+      operation: "add"
+    - field: "AEIC_CO"
+      category: "aircraft"
+      hierarchy: 1
+      operation: "add"
+
+cdeps_inline_config:
+  streams:
+    - name: "MACCITY_CO"
+      file: "data/MACCity_4x5.nc"
+    - name: "AEIC_CO"
+      file: "data/AEIC.nc"

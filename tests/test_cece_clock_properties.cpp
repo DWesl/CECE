@@ -59,7 +59,7 @@ RC_GTEST_PROP(CeceClockProperty, Property1_AdvancePreservesElapsedTime, ()) {
     std::tm* gm = std::gmtime(&end_t);
     RC_ASSERT(gm != nullptr);
 
-    char end_buf[20];
+    char end_buf[32];
     std::snprintf(end_buf, sizeof(end_buf), "%04d-%02d-%02dT%02d:%02d:%02d", gm->tm_year + 1900, gm->tm_mon + 1, gm->tm_mday, gm->tm_hour, gm->tm_min,
                   gm->tm_sec);
     const std::string end_time(end_buf);
@@ -110,7 +110,7 @@ RC_GTEST_PROP(CeceClockProperty, Property2_CalendarDecompositionCorrectness, ())
     std::tm* start_gm = std::gmtime(&start_t);
     RC_ASSERT(start_gm != nullptr);
 
-    char start_buf[20];
+    char start_buf[32];
     std::snprintf(start_buf, sizeof(start_buf), "%04d-%02d-%02dT%02d:%02d:%02d", start_gm->tm_year + 1900, start_gm->tm_mon + 1, start_gm->tm_mday,
                   start_gm->tm_hour, start_gm->tm_min, start_gm->tm_sec);
     const std::string start_time(start_buf);
@@ -123,7 +123,7 @@ RC_GTEST_PROP(CeceClockProperty, Property2_CalendarDecompositionCorrectness, ())
     std::tm* end_gm = std::gmtime(&end_t);
     RC_ASSERT(end_gm != nullptr);
 
-    char end_buf[20];
+    char end_buf[32];
     std::snprintf(end_buf, sizeof(end_buf), "%04d-%02d-%02dT%02d:%02d:%02d", end_gm->tm_year + 1900, end_gm->tm_mon + 1, end_gm->tm_mday,
                   end_gm->tm_hour, end_gm->tm_min, end_gm->tm_sec);
     const std::string end_time(end_buf);
@@ -180,7 +180,7 @@ RC_GTEST_PROP(CeceClockProperty, Property3_InvalidTimeRangeProducesError, ()) {
     std::tm* start_gm = std::gmtime(&start_t);
     RC_ASSERT(start_gm != nullptr);
 
-    char start_buf[20];
+    char start_buf[32];
     std::snprintf(start_buf, sizeof(start_buf), "%04d-%02d-%02dT%02d:%02d:%02d", start_gm->tm_year + 1900, start_gm->tm_mon + 1, start_gm->tm_mday,
                   start_gm->tm_hour, start_gm->tm_min, start_gm->tm_sec);
     const std::string start_time(start_buf);
@@ -190,7 +190,7 @@ RC_GTEST_PROP(CeceClockProperty, Property3_InvalidTimeRangeProducesError, ()) {
     std::tm* end_gm = std::gmtime(&end_t);
     RC_ASSERT(end_gm != nullptr);
 
-    char end_buf[20];
+    char end_buf[32];
     std::snprintf(end_buf, sizeof(end_buf), "%04d-%02d-%02dT%02d:%02d:%02d", end_gm->tm_year + 1900, end_gm->tm_mon + 1, end_gm->tm_mday,
                   end_gm->tm_hour, end_gm->tm_min, end_gm->tm_sec);
     const std::string end_time(end_buf);
@@ -334,7 +334,7 @@ RC_GTEST_PROP(CeceClockProperty, Property5_MissingRefreshIntervalDefaultsToBaseT
     std::tm* gm = std::gmtime(&end_t);
     RC_ASSERT(gm != nullptr);
 
-    char end_buf[20];
+    char end_buf[32];
     std::snprintf(end_buf, sizeof(end_buf), "%04d-%02d-%02dT%02d:%02d:%02d", gm->tm_year + 1900, gm->tm_mon + 1, gm->tm_mday, gm->tm_hour, gm->tm_min,
                   gm->tm_sec);
     const std::string end_time(end_buf);
@@ -410,7 +410,7 @@ RC_GTEST_PROP(CeceClockProperty, Property6_SchedulingCorrectness, ()) {
     std::tm* gm = std::gmtime(&end_t);
     RC_ASSERT(gm != nullptr);
 
-    char end_buf[20];
+    char end_buf[32];
     std::snprintf(end_buf, sizeof(end_buf), "%04d-%02d-%02dT%02d:%02d:%02d", gm->tm_year + 1900, gm->tm_mon + 1, gm->tm_mday, gm->tm_hour, gm->tm_min,
                   gm->tm_sec);
     const std::string end_time(end_buf);
@@ -498,7 +498,7 @@ RC_GTEST_PROP(CeceClockProperty, Property7_FirstStepAllDueGuarantee, ()) {
     std::tm* gm = std::gmtime(&end_t);
     RC_ASSERT(gm != nullptr);
 
-    char end_buf[20];
+    char end_buf[32];
     std::snprintf(end_buf, sizeof(end_buf), "%04d-%02d-%02dT%02d:%02d:%02d", gm->tm_year + 1900, gm->tm_mon + 1, gm->tm_mday, gm->tm_hour, gm->tm_min,
                   gm->tm_sec);
     const std::string end_time(end_buf);
@@ -570,7 +570,7 @@ RC_GTEST_PROP(CeceClockProperty, Property8_ComponentsExecuteBeforeStacking, ()) 
     std::tm* gm = std::gmtime(&end_t);
     RC_ASSERT(gm != nullptr);
 
-    char end_buf[20];
+    char end_buf[32];
     std::snprintf(end_buf, sizeof(end_buf), "%04d-%02d-%02dT%02d:%02d:%02d", gm->tm_year + 1900, gm->tm_mon + 1, gm->tm_mday, gm->tm_hour, gm->tm_min,
                   gm->tm_sec);
     const std::string end_time(end_buf);
@@ -637,7 +637,7 @@ RC_GTEST_PROP(CeceClockProperty, Property9_TerminationSignal, ()) {
     std::tm* start_gm = std::gmtime(&start_t);
     RC_ASSERT(start_gm != nullptr);
 
-    char start_buf[20];
+    char start_buf[32];
     std::snprintf(start_buf, sizeof(start_buf), "%04d-%02d-%02dT%02d:%02d:%02d", start_gm->tm_year + 1900, start_gm->tm_mon + 1, start_gm->tm_mday,
                   start_gm->tm_hour, start_gm->tm_min, start_gm->tm_sec);
     const std::string start_time(start_buf);
@@ -647,7 +647,7 @@ RC_GTEST_PROP(CeceClockProperty, Property9_TerminationSignal, ()) {
     std::tm* end_gm = std::gmtime(&end_t);
     RC_ASSERT(end_gm != nullptr);
 
-    char end_buf[20];
+    char end_buf[32];
     std::snprintf(end_buf, sizeof(end_buf), "%04d-%02d-%02dT%02d:%02d:%02d", end_gm->tm_year + 1900, end_gm->tm_mon + 1, end_gm->tm_mday,
                   end_gm->tm_hour, end_gm->tm_min, end_gm->tm_sec);
     const std::string end_time(end_buf);
@@ -876,7 +876,7 @@ RC_GTEST_PROP(CeceClockProperty, Property12_BackwardCompatibilityUniformInterval
     std::tm* gm = std::gmtime(&end_t);
     RC_ASSERT(gm != nullptr);
 
-    char end_buf[20];
+    char end_buf[32];
     std::snprintf(end_buf, sizeof(end_buf), "%04d-%02d-%02dT%02d:%02d:%02d", gm->tm_year + 1900, gm->tm_mon + 1, gm->tm_mday, gm->tm_hour, gm->tm_min,
                   gm->tm_sec);
     const std::string end_time(end_buf);

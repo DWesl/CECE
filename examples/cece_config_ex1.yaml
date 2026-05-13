@@ -4,13 +4,13 @@ driver:
   end_time: "2020-01-01T03:00:00"
   timestep_seconds: 3600
 
-grid:
-  nx: 4
-  ny: 4
-  lon_min: -180.0
-  lon_max: 180.0
-  lat_min: -90.0
-  lat_max: 90.0
+  grid:
+    nx: 720
+    ny: 360
+    lon_min: -180.0
+    lon_max: 180.0
+    lat_min: -90.0
+    lat_max: 90.0
 
 meteorology: {}
 
@@ -23,7 +23,7 @@ species:
 cece_data:
   streams:
     - name: "MACCITY"
-      file: "/work/data/MACCity_4x5.nc"
+      file: "../scripts/data/MACCity_4x5.nc"
       yearFirst: 2000
       yearLast: 2010
       yearAlign: 2020
