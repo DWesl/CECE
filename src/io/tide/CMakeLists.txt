@@ -158,7 +158,7 @@ target_link_libraries(
 add_test(NAME tide_api_test COMMAND test_tide)
 
 # -----------------------------------------------------------------------
-# NetCDF-Fortran (required by test_tide_roundtrip and CF property tests)
+# NetCDF-Fortran (required by certain tests)
 # -----------------------------------------------------------------------
 find_package(NetCDF QUIET COMPONENTS Fortran)
 if(NOT NetCDF_Fortran_FOUND)

@@ -18,6 +18,10 @@ species:
       operation: "add"
 
 physics_schemes:
+  - name: "GFED"
+    language: "cpp"
+    options:
+      version: "GFED4"
   - name: "DayCycleAndSeasonVariation"
     options:
       amplitude_diurnal: 0.5
