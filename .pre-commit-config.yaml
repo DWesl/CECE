@@ -1,0 +1,43 @@
+repos:
+  # General file hygiene
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: "v6.0.0"
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+        args: [--allow-multiple-documents]
+      - id: check-added-large-files
+        args: [--maxkb=500]
+      - id: check-merge-conflict
+      - id: mixed-line-ending
+        args: [--fix=lf]
+
+  # C++ formatting via clang-format (uses .clang-format in repo root)
+  - repo: https://github.com/pre-commit/mirrors-clang-format
+    rev: "v22.1.4"
+    hooks:
+      - id: clang-format
+        types_or: [c, c++]
+
+  # Python linting and formatting
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: "v0.15.11"
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format
+
+  # CMake formatting
+  - repo: https://github.com/BlankSpruce/gersemi-pre-commit
+    rev: "0.27.2"
+    hooks:
+      - id: gersemi
+        args: [--in-place, --indent=2, --line-length=100]
+
+  # YAML formatting
+  - repo: https://github.com/rbubley/mirrors-prettier
+    rev: "v3.8.3"
+    hooks:
+      - id: prettier
+        types_or: [yaml]

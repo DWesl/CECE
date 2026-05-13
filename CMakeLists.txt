@@ -5,38 +5,39 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # Optional Fortran support
 include(CheckLanguage)
 check_language(Fortran)
 if(CMAKE_Fortran_COMPILER)
-    enable_language(Fortran)
-    set(CECE_HAS_FORTRAN ON)
-    file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/share)
+  enable_language(Fortran)
+  set(CECE_HAS_FORTRAN ON)
+  file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/share)
 else()
-    message(WARNING "Fortran compiler not found. Fortran features will be disabled.")
+  message(WARNING "Fortran compiler not found. Fortran features will be disabled.")
 endif()
 
 list(INSERT CMAKE_MODULE_PATH 0 "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
 # Allow find_package to use <PackageName>_ROOT variables
 if(POLICY CMP0074)
-    cmake_policy(SET CMP0074 NEW)
+  cmake_policy(SET CMP0074 NEW)
 endif()
 
 # --- Dependencies ---
 
 include(FetchContent)
 
-# Kokkos - Configure execution spaces
-# Default to Serial and OpenMP for CPU portability
-# Users can override with -DKokkos_ENABLE_CUDA=ON or -DKokkos_ENABLE_HIP=ON for GPU support
+# Kokkos - Configure execution spaces Default to Serial and OpenMP for CPU
+# portability Users can override with -DKokkos_ENABLE_CUDA=ON or
+# -DKokkos_ENABLE_HIP=ON for GPU support
 if(NOT DEFINED Kokkos_ENABLE_SERIAL)
-    set(Kokkos_ENABLE_SERIAL ON CACHE BOOL "Enable Kokkos Serial execution space" FORCE)
+  set(Kokkos_ENABLE_SERIAL ON CACHE BOOL "Enable Kokkos Serial execution space" FORCE)
 endif()
 
 if(NOT DEFINED Kokkos_ENABLE_OPENMP)
-    set(Kokkos_ENABLE_OPENMP ON CACHE BOOL "Enable Kokkos OpenMP execution space" FORCE)
+  set(Kokkos_ENABLE_OPENMP ON CACHE BOOL "Enable Kokkos OpenMP execution space" FORCE)
 endif()
 
 # GPU support is optional - users must explicitly enable
@@ -48,7 +49,7 @@ option(BUILD_PYTHON_BINDINGS "Build Python bindings for CECE" OFF)
 
 # Validate that at most one GPU backend is enabled
 if(Kokkos_ENABLE_CUDA AND Kokkos_ENABLE_HIP)
-    message(FATAL_ERROR "Cannot enable both CUDA and HIP. Choose one GPU backend or neither.")
+  message(FATAL_ERROR "Cannot enable both CUDA and HIP. Choose one GPU backend or neither.")
 endif()
 
 # Log Kokkos configuration
@@ -58,32 +59,28 @@ message(STATUS "  OpenMP: ${Kokkos_ENABLE_OPENMP}")
 message(STATUS "  CUDA: ${Kokkos_ENABLE_CUDA}")
 message(STATUS "  HIP: ${Kokkos_ENABLE_HIP}")
 
-FetchContent_Declare(
-    kokkos
-    GIT_REPOSITORY https://github.com/kokkos/kokkos.git
-    GIT_TAG 4.2.00)
+FetchContent_Declare(kokkos GIT_REPOSITORY https://github.com/kokkos/kokkos.git GIT_TAG 4.2.00)
 FetchContent_MakeAvailable(kokkos)
 
 # YAML-CPP
-FetchContent_Declare(
-    yaml-cpp
-    GIT_REPOSITORY https://github.com/jbeder/yaml-cpp.git
-    GIT_TAG 0.8.0)
+FetchContent_Declare(yaml-cpp GIT_REPOSITORY https://github.com/jbeder/yaml-cpp.git GIT_TAG 0.8.0)
 FetchContent_MakeAvailable(yaml-cpp)
 
 # GTest
 FetchContent_Declare(
-    googletest
-    GIT_REPOSITORY https://github.com/google/googletest.git
-    GIT_TAG v1.14.0)
+  googletest
+  GIT_REPOSITORY https://github.com/google/googletest.git
+  GIT_TAG v1.14.0
+)
 set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(googletest)
 
 # RapidCheck (Property-Based Testing)
 FetchContent_Declare(
-    rapidcheck
-    GIT_REPOSITORY https://github.com/emil-e/rapidcheck.git
-    GIT_TAG        master)
+  rapidcheck
+  GIT_REPOSITORY https://github.com/emil-e/rapidcheck.git
+  GIT_TAG master
+)
 set(RC_ENABLE_GTEST ON CACHE BOOL "Enable RapidCheck GTest integration" FORCE)
 FetchContent_MakeAvailable(rapidcheck)
 
@@ -94,20 +91,20 @@ message(STATUS "ESMF include dirs: ${ESMF_INCLUDE_DIRS}")
 
 # Discovery PIO and NetCDF from ESMF if possible
 function(find_root_by_file root_var filename)
-    if(NOT ${root_var})
-        foreach(lib ${ESMF_LIBRARIES})
-            if(lib MATCHES "^-L(.*)")
-                set(search_path "${CMAKE_MATCH_1}")
-                if(EXISTS "${search_path}/../include/${filename}")
-                    set(root "${search_path}/..")
-                    get_filename_component(root "${root}" ABSOLUTE)
-                    set(${root_var} "${root}" PARENT_SCOPE)
-                    message(STATUS "Found ${root_var} from ESMF path: ${root}")
-                    return()
-                endif()
-            endif()
-        endforeach()
-    endif()
+  if(NOT ${root_var})
+    foreach(lib ${ESMF_LIBRARIES})
+      if(lib MATCHES "^-L(.*)")
+        set(search_path "${CMAKE_MATCH_1}")
+        if(EXISTS "${search_path}/../include/${filename}")
+          set(root "${search_path}/..")
+          get_filename_component(root "${root}" ABSOLUTE)
+          set(${root_var} "${root}" PARENT_SCOPE)
+          message(STATUS "Found ${root_var} from ESMF path: ${root}")
+          return()
+        endif()
+      endif()
+    endforeach()
+  endif()
 endfunction()
 
 find_root_by_file(NetCDF_ROOT "netcdf.h")
@@ -115,16 +112,16 @@ find_root_by_file(NetCDFF_ROOT "netcdf.mod")
 find_root_by_file(PIO_ROOT "pio.h")
 
 if(NetCDF_ROOT)
-    set(NetCDF_FOUND TRUE)
-    set(ENV{NetCDF_ROOT} "${NetCDF_ROOT}")
+  set(NetCDF_FOUND TRUE)
+  set(ENV{NetCDF_ROOT} "${NetCDF_ROOT}")
 endif()
 if(NetCDFF_ROOT)
-    set(NetCDFF_FOUND TRUE)
-    set(ENV{NetCDFF_ROOT} "${NetCDFF_ROOT}")
+  set(NetCDFF_FOUND TRUE)
+  set(ENV{NetCDFF_ROOT} "${NetCDFF_ROOT}")
 endif()
 if(PIO_ROOT)
-    set(PIO_FOUND TRUE)
-    set(ENV{PIO_ROOT} "${PIO_ROOT}")
+  set(PIO_FOUND TRUE)
+  set(ENV{PIO_ROOT} "${PIO_ROOT}")
 endif()
 
 find_package(MPI REQUIRED)
@@ -132,108 +129,124 @@ message(STATUS "Found MPI: ${MPI_CXX_VERSION}")
 
 # --- CECE Library ---
 
-set(CECE_SRCS
-    src/cece_config_parser.cpp
-    src/cece_compute.cpp
-    src/cece_stacking_engine.cpp
-    src/cece_physics_factory.cpp
-    src/cece_provenance.cpp
-    src/physics/cece_native_example.cpp
-    src/physics/cece_sea_salt.cpp
-    src/physics/cece_megan.cpp
-    src/physics/cece_dms.cpp
-    src/physics/cece_lightning.cpp
-    src/physics/cece_soil_nox.cpp
-    src/physics/cece_dust.cpp
-    src/physics/cece_fengsha.cpp
-    src/physics/cece_ginoux.cpp
-    src/physics/cece_k14.cpp
-    src/physics/cece_volcano.cpp
-    src/physics/cece_speciation_config.cpp
-    src/physics/cece_speciation_engine.cpp
-    src/physics/cece_canopy_model.cpp
-    src/physics/cece_emission_activity.cpp
-    src/physics/cece_megan3.cpp
-    src/physics/cece_bdsnp.cpp
-    src/io/cece_data_ingestor.cpp
-    src/io/cece_diagnostic_manager.cpp
-    src/io/cece_standalone_writer.cpp
-    src/cece_core_writer_init.cpp
-    src/cece_core_driver_config.cpp
-    src/cece_core_advertise.cpp
-    src/cece_core_realize.cpp
-    src/cece_core_realize_wrapper.cpp
-    src/cece_core_initialize_p1.cpp
-    src/cece_core_initialize_p2.cpp
-    src/cece_core_field_helpers.cpp
-    src/cece_core_run.cpp
-    src/cece_core_finalize.cpp
-    src/cece_config_path.cpp
-    src/cece_c_api.cpp
-    src/cece_config_validator.cpp)
+set(
+  CECE_SRCS
+  src/cece_config_parser.cpp
+  src/cece_compute.cpp
+  src/cece_stacking_engine.cpp
+  src/cece_physics_factory.cpp
+  src/cece_provenance.cpp
+  src/physics/cece_native_example.cpp
+  src/physics/cece_sea_salt.cpp
+  src/physics/cece_megan.cpp
+  src/physics/cece_dms.cpp
+  src/physics/cece_lightning.cpp
+  src/physics/cece_soil_nox.cpp
+  src/physics/cece_dust.cpp
+  src/physics/cece_fengsha.cpp
+  src/physics/cece_ginoux.cpp
+  src/physics/cece_k14.cpp
+  src/physics/cece_volcano.cpp
+  src/physics/cece_speciation_config.cpp
+  src/physics/cece_speciation_engine.cpp
+  src/physics/cece_canopy_model.cpp
+  src/physics/cece_emission_activity.cpp
+  src/physics/cece_megan3.cpp
+  src/physics/cece_bdsnp.cpp
+  src/io/cece_data_ingestor.cpp
+  src/io/cece_diagnostic_manager.cpp
+  src/io/cece_standalone_writer.cpp
+  src/cece_core_writer_init.cpp
+  src/cece_core_driver_config.cpp
+  src/cece_core_advertise.cpp
+  src/cece_core_realize.cpp
+  src/cece_core_realize_wrapper.cpp
+  src/cece_core_initialize_p1.cpp
+  src/cece_core_initialize_p2.cpp
+  src/cece_core_field_helpers.cpp
+  src/cece_core_run.cpp
+  src/cece_core_finalize.cpp
+  src/cece_config_path.cpp
+  src/cece_c_api.cpp
+  src/cece_config_validator.cpp
+)
 
 if(CECE_HAS_FORTRAN)
-    add_subdirectory(src/io/tide)
+  add_subdirectory(src/io/tide)
 
-    list(APPEND CECE_SRCS
-        src/cece_cap.F90
-        src/physics/cece_fortran_bridge.cpp
-        src/physics/legacy_fortran.F90
-        src/physics/cece_sea_salt_fortran_bridge.cpp
-        src/physics/sea_salt_kernel.F90
-        src/physics/cece_megan_fortran_bridge.cpp
-        src/physics/megan_kernel.F90
-        src/physics/cece_dms_fortran_bridge.cpp
-        src/physics/dms_kernel.F90
-        src/physics/cece_lightning_fortran_bridge.cpp
-        src/physics/lightning_kernel.F90
-        src/physics/cece_soil_nox_fortran_bridge.cpp
-        src/physics/soil_nox_kernel.F90
-        src/physics/cece_dust_fortran_bridge.cpp
-        src/physics/dust_kernel.F90
-        src/physics/cece_fengsha_fortran_bridge.cpp
-        src/physics/fengsha_kernel.F90
-        src/physics/cece_ginoux_fortran_bridge.cpp
-        src/physics/ginoux_kernel.F90
-        src/physics/cece_k14_fortran_bridge.cpp
-        src/physics/k14_kernel.F90
-        src/physics/cece_volcano_fortran_bridge.cpp
-        src/physics/volcano_kernel.F90
-        src/physics/cece_megan3_fortran_bridge.cpp
-        src/physics/megan3_kernel.F90
-        src/physics/cece_bdsnp_fortran_bridge.cpp
-        src/physics/bdsnp_kernel.F90
-        src/cece_ingestor_bridge.cpp)
+  list(
+    APPEND CECE_SRCS
+    src/cece_cap.F90
+    src/physics/cece_fortran_bridge.cpp
+    src/physics/legacy_fortran.F90
+    src/physics/cece_sea_salt_fortran_bridge.cpp
+    src/physics/sea_salt_kernel.F90
+    src/physics/cece_megan_fortran_bridge.cpp
+    src/physics/megan_kernel.F90
+    src/physics/cece_dms_fortran_bridge.cpp
+    src/physics/dms_kernel.F90
+    src/physics/cece_lightning_fortran_bridge.cpp
+    src/physics/lightning_kernel.F90
+    src/physics/cece_soil_nox_fortran_bridge.cpp
+    src/physics/soil_nox_kernel.F90
+    src/physics/cece_dust_fortran_bridge.cpp
+    src/physics/dust_kernel.F90
+    src/physics/cece_fengsha_fortran_bridge.cpp
+    src/physics/fengsha_kernel.F90
+    src/physics/cece_ginoux_fortran_bridge.cpp
+    src/physics/ginoux_kernel.F90
+    src/physics/cece_k14_fortran_bridge.cpp
+    src/physics/k14_kernel.F90
+    src/physics/cece_volcano_fortran_bridge.cpp
+    src/physics/volcano_kernel.F90
+    src/physics/cece_megan3_fortran_bridge.cpp
+    src/physics/megan3_kernel.F90
+    src/physics/cece_bdsnp_fortran_bridge.cpp
+    src/physics/bdsnp_kernel.F90
+    src/cece_ingestor_bridge.cpp
+  )
 endif()
 
 add_library(cece SHARED ${CECE_SRCS})
 
 if(CECE_HAS_FORTRAN)
-    set_target_properties(cece PROPERTIES Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/fortran_modules/cece)
-    target_include_directories(cece PUBLIC $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/fortran_modules/cece>)
-    target_compile_definitions(cece PRIVATE CECE_HAS_FORTRAN)
+  set_target_properties(
+    cece
+    PROPERTIES Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/fortran_modules/cece
+  )
+  target_include_directories(
+    cece
+    PUBLIC $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/fortran_modules/cece>
+  )
+  target_compile_definitions(cece PRIVATE CECE_HAS_FORTRAN)
 endif()
 
 target_include_directories(
-    cece
-    PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include> $<INSTALL_INTERFACE:include>
-           ${ESMF_INCLUDE_DIRS})
+  cece
+  PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>
+    ${ESMF_INCLUDE_DIRS}
+)
 
 target_link_libraries(cece PUBLIC Kokkos::kokkos ESMF::ESMF yaml-cpp)
 
 if(CECE_HAS_FORTRAN)
-    target_link_libraries(cece PUBLIC tide)
+  target_link_libraries(cece PUBLIC tide)
 endif()
 
 if(NetCDF_ROOT)
-    if(EXISTS "${NetCDF_ROOT}/lib/libnetcdf.so")
-        target_link_libraries(cece PUBLIC "${NetCDF_ROOT}/lib/libnetcdf.so")
-    endif()
+  if(EXISTS "${NetCDF_ROOT}/lib/libnetcdf.so")
+    target_link_libraries(cece PUBLIC "${NetCDF_ROOT}/lib/libnetcdf.so")
+  endif()
 endif()
 
 if(MPI_FOUND)
-    target_link_libraries(cece PUBLIC MPI::MPI_CXX)
+  target_link_libraries(cece PUBLIC MPI::MPI_CXX)
 endif()
+
+# Suppress conflicting C++ MPI bindings pulled in via ESMF's ESMC.h -> mpi.h -> mpicxx.h
+target_compile_definitions(cece PUBLIC MPICH_SKIP_MPICXX OMPI_SKIP_MPICXX)
 
 # --- Tests ---
 
@@ -285,9 +298,9 @@ add_executable(test_field_resolution_priority tests/test_field_resolution_priori
 target_link_libraries(test_field_resolution_priority PRIVATE cece GTest::gtest_main)
 
 if(CECE_HAS_FORTRAN)
-    add_library(test_helpers STATIC tests/test_helpers.F90)
-    target_include_directories(test_helpers PUBLIC ${ESMF_INCLUDE_DIRS})
-    target_link_libraries(test_helpers PUBLIC ESMF::ESMF)
+  add_library(test_helpers STATIC tests/test_helpers.F90)
+  target_include_directories(test_helpers PUBLIC ${ESMF_INCLUDE_DIRS})
+  target_link_libraries(test_helpers PUBLIC ESMF::ESMF)
 endif()
 
 add_executable(hemco_comparison_driver tests/hemco_comparison_driver.cpp)
@@ -316,8 +329,8 @@ target_link_libraries(test_suite_idempotence PRIVATE cece GTest::gtest_main)
 add_executable(test_repro_failure tests/repro_failure.cpp)
 target_link_libraries(test_repro_failure PRIVATE cece GTest::gtest_main)
 
-# Unit tests for field creation (Requirement R4)
-# FENGSHA Dust Scheme Property Tests
+# Unit tests for field creation (Requirement R4) FENGSHA Dust Scheme Property
+# Tests
 add_executable(test_fengsha_properties tests/test_fengsha_properties.cpp)
 target_link_libraries(test_fengsha_properties PRIVATE cece GTest::gtest_main)
 
@@ -344,17 +357,17 @@ target_link_libraries(test_bdsnp PRIVATE cece GTest::gtest rapidcheck rapidcheck
 
 add_executable(test_field_creation tests/test_field_creation.cpp)
 if(CECE_HAS_FORTRAN AND TARGET test_helpers)
-    target_link_libraries(test_field_creation PRIVATE cece test_helpers GTest::gtest_main)
+  target_link_libraries(test_field_creation PRIVATE cece test_helpers GTest::gtest_main)
 else()
-    target_link_libraries(test_field_creation PRIVATE cece GTest::gtest_main)
+  target_link_libraries(test_field_creation PRIVATE cece GTest::gtest_main)
 endif()
 
 # Unit tests for field pointer passing (Requirement R5)
 add_executable(test_field_pointer_passing tests/test_field_pointer_passing.cpp)
 if(CECE_HAS_FORTRAN AND TARGET test_helpers)
-    target_link_libraries(test_field_pointer_passing PRIVATE cece test_helpers GTest::gtest_main)
+  target_link_libraries(test_field_pointer_passing PRIVATE cece test_helpers GTest::gtest_main)
 else()
-    target_link_libraries(test_field_pointer_passing PRIVATE cece GTest::gtest_main)
+  target_link_libraries(test_field_pointer_passing PRIVATE cece GTest::gtest_main)
 endif()
 
 # Standalone NUOPC driver
@@ -363,61 +376,118 @@ add_subdirectory(standalone_nuopc)
 # Python script tests
 find_package(Python3 COMPONENTS Interpreter)
 if(Python3_Interpreter_FOUND)
+  # Use a venv inside the build directory so pip installs work even in
+  # read-only container environments (e.g. Singularity).
+  set(CECE_PYTHON_VENV_DIR "${CMAKE_BINARY_DIR}/python_venv")
+  if(WIN32)
+    set(VENV_PYTHON "${CECE_PYTHON_VENV_DIR}/Scripts/python.exe")
+  else()
+    set(VENV_PYTHON "${CECE_PYTHON_VENV_DIR}/bin/python")
+  endif()
+
+  add_test(NAME create_python_venv COMMAND ${Python3_EXECUTABLE} -m venv ${CECE_PYTHON_VENV_DIR})
+  add_test(
+    NAME upgrade_pip_in_venv
+    COMMAND ${VENV_PYTHON} -m pip install --upgrade pip
+  )
+  set_tests_properties(
+    create_python_venv
+    upgrade_pip_in_venv
+    PROPERTIES FIXTURES_SETUP "python_venv_ready"
+  )
+  set_tests_properties(upgrade_pip_in_venv PROPERTIES DEPENDS create_python_venv)
+
+  add_test(
+    NAME install_python_deps
+    COMMAND ${VENV_PYTHON} -m pip install pytest PyYAML matplotlib numpy --ignore-installed
+  )
+  set_tests_properties(
+    install_python_deps
+    PROPERTIES FIXTURES_SETUP "python_deps_installed" FIXTURES_REQUIRED "python_venv_ready"
+  )
+
+  add_test(
+    NAME test_hemco_to_cece_python
+    COMMAND ${VENV_PYTHON} -m pytest ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_converters.py
+  )
+  set_tests_properties(
+    test_hemco_to_cece_python
+    PROPERTIES
+      ENVIRONMENT "PYTHONPATH=${CMAKE_CURRENT_SOURCE_DIR}/scripts"
+      FIXTURES_REQUIRED "python_deps_installed"
+  )
+
+  add_test(
+    NAME test_scripts_python
+    COMMAND ${VENV_PYTHON} -m pytest ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_scripts.py
+  )
+  set_tests_properties(
+    test_scripts_python
+    PROPERTIES
+      ENVIRONMENT "PYTHONPATH=${CMAKE_CURRENT_SOURCE_DIR}/scripts"
+      FIXTURES_REQUIRED "python_deps_installed"
+  )
+
+  if(BUILD_PYTHON_BINDINGS)
     add_test(
-        NAME install_pytest
-        COMMAND ${Python3_EXECUTABLE} -m pip install pytest --quiet)
-    set_tests_properties(install_pytest PROPERTIES FIXTURES_SETUP "pytest_installed")
+      NAME test_enum_config_bindings
+      COMMAND
+        ${VENV_PYTHON} -m pytest ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_enum_config_bindings.py -v
+    )
+    set_tests_properties(
+      test_enum_config_bindings
+      PROPERTIES
+        ENVIRONMENT "PYTHONPATH=${CMAKE_BINARY_DIR}/src/python/cece"
+        FIXTURES_REQUIRED "python_deps_installed"
+    )
 
     add_test(
-        NAME test_hemco_to_cece_python
-        COMMAND ${Python3_EXECUTABLE} -m pytest ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_converters.py)
-    set_tests_properties(test_hemco_to_cece_python PROPERTIES
-        ENVIRONMENT "PYTHONPATH=${CMAKE_CURRENT_SOURCE_DIR}/scripts"
-        FIXTURES_REQUIRED "pytest_installed")
+      NAME test_state_bindings
+      COMMAND ${VENV_PYTHON} -m pytest ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_state_bindings.py -v
+    )
+    set_tests_properties(
+      test_state_bindings
+      PROPERTIES
+        ENVIRONMENT "PYTHONPATH=${CMAKE_BINARY_DIR}/src/python/cece"
+        FIXTURES_REQUIRED "python_deps_installed"
+    )
 
     add_test(
-        NAME test_scripts_python
-        COMMAND ${Python3_EXECUTABLE} -m pytest ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_scripts.py)
-    set_tests_properties(test_scripts_python PROPERTIES
-        ENVIRONMENT "PYTHONPATH=${CMAKE_CURRENT_SOURCE_DIR}/scripts"
-        FIXTURES_REQUIRED "pytest_installed")
+      NAME test_compute_bindings
+      COMMAND ${VENV_PYTHON} -m pytest ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_compute_bindings.py -v
+    )
+    set_tests_properties(
+      test_compute_bindings
+      PROPERTIES
+        ENVIRONMENT "PYTHONPATH=${CMAKE_BINARY_DIR}/src/python/cece"
+        FIXTURES_REQUIRED "python_deps_installed"
+    )
 
-    if(BUILD_PYTHON_BINDINGS)
-        add_test(
-            NAME test_enum_config_bindings
-            COMMAND ${Python3_EXECUTABLE} -m pytest ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_enum_config_bindings.py -v)
-        set_tests_properties(test_enum_config_bindings PROPERTIES
-            ENVIRONMENT "PYTHONPATH=${CMAKE_BINARY_DIR}/src/python/cece"
-            FIXTURES_REQUIRED "pytest_installed")
+    add_test(
+      NAME test_validator_logger_bindings
+      COMMAND
+        ${VENV_PYTHON} -m pytest ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_validator_logger_bindings.py
+        -v
+    )
+    set_tests_properties(
+      test_validator_logger_bindings
+      PROPERTIES
+        ENVIRONMENT "PYTHONPATH=${CMAKE_BINARY_DIR}/src/python/cece"
+        FIXTURES_REQUIRED "python_deps_installed"
+    )
 
-        add_test(
-            NAME test_state_bindings
-            COMMAND ${Python3_EXECUTABLE} -m pytest ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_state_bindings.py -v)
-        set_tests_properties(test_state_bindings PROPERTIES
-            ENVIRONMENT "PYTHONPATH=${CMAKE_BINARY_DIR}/src/python/cece"
-            FIXTURES_REQUIRED "pytest_installed")
-
-        add_test(
-            NAME test_compute_bindings
-            COMMAND ${Python3_EXECUTABLE} -m pytest ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_compute_bindings.py -v)
-        set_tests_properties(test_compute_bindings PROPERTIES
-            ENVIRONMENT "PYTHONPATH=${CMAKE_BINARY_DIR}/src/python/cece"
-            FIXTURES_REQUIRED "pytest_installed")
-
-        add_test(
-            NAME test_validator_logger_bindings
-            COMMAND ${Python3_EXECUTABLE} -m pytest ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_validator_logger_bindings.py -v)
-        set_tests_properties(test_validator_logger_bindings PROPERTIES
-            ENVIRONMENT "PYTHONPATH=${CMAKE_BINARY_DIR}/src/python/cece"
-            FIXTURES_REQUIRED "pytest_installed")
-
-        add_test(
-            NAME test_python_api_rewired
-            COMMAND ${Python3_EXECUTABLE} -m pytest ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_python_api_rewired.py -v)
-        set_tests_properties(test_python_api_rewired PROPERTIES
-            ENVIRONMENT "PYTHONPATH=${CMAKE_BINARY_DIR}/src/python"
-            FIXTURES_REQUIRED "pytest_installed")
-    endif()
+    add_test(
+      NAME test_python_api_rewired
+      COMMAND
+        ${VENV_PYTHON} -m pytest ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_python_api_rewired.py -v
+    )
+    set_tests_properties(
+      test_python_api_rewired
+      PROPERTIES
+        ENVIRONMENT "PYTHONPATH=${CMAKE_BINARY_DIR}/src/python"
+        FIXTURES_REQUIRED "python_deps_installed"
+    )
+  endif()
 endif()
 
 include(GoogleTest)
@@ -453,78 +523,121 @@ gtest_discover_tests(test_field_pointer_passing)
 # --- Python Bindings ---
 
 if(BUILD_PYTHON_BINDINGS)
-    message(STATUS "Building Python bindings for CECE")
-    add_subdirectory(src/python)
+  message(STATUS "Building Python bindings for CECE")
+  add_subdirectory(src/python)
 else()
-    message(STATUS "Python bindings disabled. Enable with -DBUILD_PYTHON_BINDINGS=ON")
+  message(STATUS "Python bindings disabled. Enable with -DBUILD_PYTHON_BINDINGS=ON")
 endif()
 
 # --- Doxygen Documentation ---
 
 find_package(Doxygen OPTIONAL_COMPONENTS dot)
 if(DOXYGEN_FOUND)
-    set(DOXYGEN_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/docs/api)
-    set(DOXYGEN_GENERATE_HTML YES)
-    set(DOXYGEN_GENERATE_LATEX NO)
-    set(DOXYGEN_GENERATE_MAN NO)
-    set(DOXYGEN_HAVE_DOT ${DOXYGEN_dot_FOUND})
-    set(DOXYGEN_DOT_NUM_THREADS 4)
-    set(DOXYGEN_EXTRACT_ALL NO)
-    set(DOXYGEN_EXTRACT_PRIVATE NO)
-    set(DOXYGEN_EXTRACT_STATIC YES)
-    set(DOXYGEN_SOURCE_BROWSER YES)
-    set(DOXYGEN_GENERATE_TREEVIEW YES)
-    set(DOXYGEN_TREEVIEW_WIDTH 250)
-    set(DOXYGEN_CALL_GRAPH YES)
-    set(DOXYGEN_CALLER_GRAPH YES)
-    set(DOXYGEN_INCLUDE_GRAPH YES)
-    set(DOXYGEN_INCLUDED_BY_GRAPH YES)
-    set(DOXYGEN_DIRECTORY_GRAPH YES)
-    set(DOXYGEN_CLASS_GRAPH YES)
-    set(DOXYGEN_COLLABORATION_GRAPH YES)
-    set(DOXYGEN_GROUP_GRAPHS YES)
-    set(DOXYGEN_PREDEFINED "KOKKOS_LAMBDA=[]" "KOKKOS_FUNCTION=" "KOKKOS_INLINE_FUNCTION=inline")
+  set(DOXYGEN_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/docs/api)
+  set(DOXYGEN_GENERATE_HTML YES)
+  set(DOXYGEN_GENERATE_LATEX NO)
+  set(DOXYGEN_GENERATE_MAN NO)
+  set(DOXYGEN_HAVE_DOT ${DOXYGEN_dot_FOUND})
+  set(DOXYGEN_DOT_NUM_THREADS 4)
+  set(DOXYGEN_EXTRACT_ALL NO)
+  set(DOXYGEN_EXTRACT_PRIVATE NO)
+  set(DOXYGEN_EXTRACT_STATIC YES)
+  set(DOXYGEN_SOURCE_BROWSER YES)
+  set(DOXYGEN_GENERATE_TREEVIEW YES)
+  set(DOXYGEN_TREEVIEW_WIDTH 250)
+  set(DOXYGEN_CALL_GRAPH YES)
+  set(DOXYGEN_CALLER_GRAPH YES)
+  set(DOXYGEN_INCLUDE_GRAPH YES)
+  set(DOXYGEN_INCLUDED_BY_GRAPH YES)
+  set(DOXYGEN_DIRECTORY_GRAPH YES)
+  set(DOXYGEN_CLASS_GRAPH YES)
+  set(DOXYGEN_COLLABORATION_GRAPH YES)
+  set(DOXYGEN_GROUP_GRAPHS YES)
+  set(DOXYGEN_PREDEFINED "KOKKOS_LAMBDA=[]" "KOKKOS_FUNCTION=" "KOKKOS_INLINE_FUNCTION=inline")
 
-    doxygen_add_docs(docs
-        ${CMAKE_CURRENT_SOURCE_DIR}/include
-        ${CMAKE_CURRENT_SOURCE_DIR}/src
-        COMMENT "Generating API documentation with Doxygen"
-        ALL)
+  doxygen_add_docs(
+    docs
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
+    COMMENT "Generating API documentation with Doxygen"
+    ALL
+  )
 else()
-    message(STATUS "Doxygen not found. API documentation generation disabled.")
-    message(STATUS "Install Doxygen to enable: sudo apt-get install doxygen graphviz")
+  message(STATUS "Doxygen not found. API documentation generation disabled.")
+  message(STATUS "Install Doxygen to enable: sudo apt-get install doxygen graphviz")
 endif()
 
 # --- Code Quality Checks ---
 
 find_program(CLANG_FORMAT_EXECUTABLE clang-format)
 if(CLANG_FORMAT_EXECUTABLE)
-    file(GLOB_RECURSE CECE_FORMAT_FILES
-        "${CMAKE_CURRENT_SOURCE_DIR}/include/cece/*.hpp"
-        "${CMAKE_CURRENT_SOURCE_DIR}/include/cece/*.h"
-        "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp"
-        "${CMAKE_CURRENT_SOURCE_DIR}/src/**/*.cpp")
+  file(
+    GLOB_RECURSE CECE_FORMAT_FILES
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/cece/*.hpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/cece/*.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp"
+  )
 
-    add_custom_target(clang-format
-        COMMAND ${CLANG_FORMAT_EXECUTABLE} -i ${CECE_FORMAT_FILES}
-        COMMENT "Running clang-format on CECE source files")
+  add_custom_target(
+    clang-format
+    COMMAND ${CLANG_FORMAT_EXECUTABLE} -i ${CECE_FORMAT_FILES}
+    COMMENT "Running clang-format on CECE source files"
+  )
 
-    add_custom_target(clang-format-check
-        COMMAND ${CLANG_FORMAT_EXECUTABLE} --dry-run --Werror ${CECE_FORMAT_FILES}
-        COMMENT "Checking clang-format compliance on CECE source files")
+  add_custom_target(
+    clang-format-check
+    COMMAND ${CLANG_FORMAT_EXECUTABLE} --dry-run --Werror ${CECE_FORMAT_FILES}
+    COMMENT "Checking clang-format compliance on CECE source files"
+  )
 else()
-    message(STATUS "clang-format not found. Code formatting targets disabled.")
+  message(STATUS "clang-format not found. Code formatting targets disabled.")
 endif()
 
 find_program(CLANG_TIDY_EXECUTABLE clang-tidy)
 if(CLANG_TIDY_EXECUTABLE)
-    file(GLOB_RECURSE CECE_TIDY_FILES
-        "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp"
-        "${CMAKE_CURRENT_SOURCE_DIR}/src/**/*.cpp")
+  file(GLOB_RECURSE CECE_TIDY_FILES "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
 
-    add_custom_target(clang-tidy
-        COMMAND ${CLANG_TIDY_EXECUTABLE} -p ${CMAKE_BINARY_DIR} ${CECE_TIDY_FILES}
-        COMMENT "Running clang-tidy on CECE source files")
+  set(_tidy_extra_args "")
+
+  # Python sources require Python.h; exclude them unless bindings are built,
+  # and if they are built pass the Python include dir so clang-tidy can find Python.h.
+  if(NOT BUILD_PYTHON_BINDINGS)
+    list(FILTER CECE_TIDY_FILES EXCLUDE REGEX ".*/src/python/.*")
+  else()
+    find_package(Python3 COMPONENTS Development QUIET)
+    foreach(_py_inc ${Python3_INCLUDE_DIRS})
+      list(APPEND _tidy_extra_args "--extra-arg=-I${_py_inc}")
+    endforeach()
+  endif()
+
+  # clang-tidy uses clang's frontend, which can't find the host compiler's omp.h
+  # automatically. Try GCC's -print-file-name first, fall back to a path search.
+  execute_process(
+    COMMAND ${CMAKE_CXX_COMPILER} -print-file-name=include
+    OUTPUT_VARIABLE _gcc_include_dir
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+    ERROR_QUIET # suppress noise from non-GCC compilers that don't support this flag
+    RESULT_VARIABLE _gcc_print_result
+  )
+  if(_gcc_print_result EQUAL 0 AND EXISTS "${_gcc_include_dir}/omp.h")
+    list(APPEND _tidy_extra_args "--extra-arg=-I${_gcc_include_dir}")
+  else()
+    # Fallback for Intel, Clang, or other compilers: search standard locations
+    find_path(_omp_h_dir NAMES omp.h)
+    if(_omp_h_dir)
+      list(APPEND _tidy_extra_args "--extra-arg=-I${_omp_h_dir}")
+    endif()
+  endif()
+
+  add_custom_target(
+    clang-tidy
+    COMMAND
+      ${CLANG_TIDY_EXECUTABLE} -p ${CMAKE_BINARY_DIR}
+      "--header-filter=^${CMAKE_CURRENT_SOURCE_DIR}/(include|src)/.*\\.(hpp|cpp|h)$$"
+      ${_tidy_extra_args} ${CECE_TIDY_FILES}
+    COMMENT "Running clang-tidy on CECE source files"
+    VERBATIM
+  )
 else()
-    message(STATUS "clang-tidy not found. Code analysis targets disabled.")
+  message(STATUS "clang-tidy not found. Code analysis targets disabled.")
 endif()

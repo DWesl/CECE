@@ -12,15 +12,11 @@ message(STATUS "Python3 include dirs: ${Python3_INCLUDE_DIRS}")
 # Fetch pybind11 v2.12.0
 include(FetchContent)
 
-# Disable LTO before fetching pybind11 to work around GCC 13 internal compiler error.
-# pybind11 enables LTO by default via pybind11::lto target.
+# Disable LTO before fetching pybind11 to work around GCC 13 internal compiler
+# error. pybind11 enables LTO by default via pybind11::lto target.
 set(CMAKE_INTERPROCEDURAL_OPTIMIZATION OFF)
 
-FetchContent_Declare(
-    pybind11
-    GIT_REPOSITORY https://github.com/pybind/pybind11.git
-    GIT_TAG v2.12.0
-)
+FetchContent_Declare(pybind11 GIT_REPOSITORY https://github.com/pybind/pybind11.git GIT_TAG v2.12.0)
 FetchContent_MakeAvailable(pybind11)
 
 # Build the pybind11 extension module
@@ -29,27 +25,24 @@ pybind11_add_module(_cece_core cece_pybind.cpp)
 target_link_libraries(_cece_core PRIVATE cece Kokkos::kokkos yaml-cpp)
 
 # Place the compiled .so in the cece package directory
-set_target_properties(_cece_core PROPERTIES
-    LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/cece"
+set_target_properties(
+  _cece_core
+  PROPERTIES LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/cece"
 )
 
 # Create Python package directory
 file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/cece")
 
 # Copy Python source files to build directory (excluding old binding files)
-file(COPY
-    __init__.py
-    config.py
-    state.py
-    exceptions.py
-    utils.py
-    py.typed
-    DESTINATION "${CMAKE_CURRENT_BINARY_DIR}/cece"
+file(
+  COPY __init__.py config.py state.py exceptions.py utils.py py.typed
+  DESTINATION "${CMAKE_CURRENT_BINARY_DIR}/cece"
 )
 
 # Create setup.py for installation
-file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/setup.py"
-"from setuptools import setup, find_packages
+file(
+  WRITE "${CMAKE_CURRENT_BINARY_DIR}/setup.py"
+  "from setuptools import setup, find_packages
 
 setup(
     name='cece',
@@ -67,18 +60,22 @@ setup(
     ],
     zip_safe=False,
 )
-")
+"
+)
 
 # Installation targets
-install(DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/cece"
-    DESTINATION "${Python3_SITELIB}"
-    COMPONENT python
+install(
+  DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/cece"
+  DESTINATION "${Python3_SITELIB}"
+  COMPONENT python
 )
 
 # Custom target for Python package
-add_custom_target(python_package ALL
-    DEPENDS _cece_core
-    COMMENT "Python CECE package ready in ${CMAKE_CURRENT_BINARY_DIR}/cece"
+add_custom_target(
+  python_package
+  ALL
+  DEPENDS _cece_core
+  COMMENT "Python CECE package ready in ${CMAKE_CURRENT_BINARY_DIR}/cece"
 )
 
 message(STATUS "Python bindings configuration:")
