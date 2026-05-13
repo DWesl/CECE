@@ -260,11 +260,7 @@ endif()
 target_compile_definitions(cece PUBLIC MPICH_SKIP_MPICXX OMPI_SKIP_MPICXX)
 
 # --- Install Rules ---
-install(TARGETS cece
-  LIBRARY DESTINATION lib
-  ARCHIVE DESTINATION lib
-  RUNTIME DESTINATION bin
-)
+install(TARGETS cece LIBRARY DESTINATION lib ARCHIVE DESTINATION lib RUNTIME DESTINATION bin)
 install(DIRECTORY include/cece DESTINATION include)
 
 # --- Tests ---

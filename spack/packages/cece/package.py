@@ -24,10 +24,18 @@ class Cece(CMakePackage):
     # version("1.0.0", tag="v1.0.0")
 
     # --- Variants ---
-    variant("openmp", default=True, description="Enable OpenMP execution space in Kokkos")
-    variant("cuda", default=False, description="Enable CUDA execution space for NVIDIA GPUs")
+    variant(
+        "openmp", default=True, description="Enable OpenMP execution space in Kokkos"
+    )
+    variant(
+        "cuda", default=False, description="Enable CUDA execution space for NVIDIA GPUs"
+    )
     variant("hip", default=False, description="Enable HIP execution space for AMD GPUs")
-    variant("fortran", default=True, description="Enable Fortran support (NUOPC cap, TIDE I/O)")
+    variant(
+        "fortran",
+        default=True,
+        description="Enable Fortran support (NUOPC cap, TIDE I/O)",
+    )
     variant("python", default=False, description="Build Python bindings")
 
     # --- Dependencies ---
@@ -76,13 +84,19 @@ class Cece(CMakePackage):
                 libomp = self.spec["llvm-openmp"]
                 omp_inc = libomp.prefix.include
                 omp_lib = join_path(libomp.prefix.lib, "libomp.dylib")
-                args.extend([
-                    self.define("OpenMP_C_FLAGS", f"-Xpreprocessor -fopenmp -I{omp_inc}"),
-                    self.define("OpenMP_CXX_FLAGS", f"-Xpreprocessor -fopenmp -I{omp_inc}"),
-                    self.define("OpenMP_C_LIB_NAMES", "omp"),
-                    self.define("OpenMP_CXX_LIB_NAMES", "omp"),
-                    self.define("OpenMP_omp_LIBRARY", omp_lib),
-                ])
+                args.extend(
+                    [
+                        self.define(
+                            "OpenMP_C_FLAGS", f"-Xpreprocessor -fopenmp -I{omp_inc}"
+                        ),
+                        self.define(
+                            "OpenMP_CXX_FLAGS", f"-Xpreprocessor -fopenmp -I{omp_inc}"
+                        ),
+                        self.define("OpenMP_C_LIB_NAMES", "omp"),
+                        self.define("OpenMP_CXX_LIB_NAMES", "omp"),
+                        self.define("OpenMP_omp_LIBRARY", omp_lib),
+                    ]
+                )
 
         # Workaround for bundled yaml-cpp requiring old cmake_minimum_required
         args.append(self.define("CMAKE_POLICY_VERSION_MINIMUM", "3.5"))
@@ -98,9 +112,7 @@ class Cece(CMakePackage):
 
             # PIO
             if "parallelio" in self.spec:
-                args.append(
-                    self.define("PIO_ROOT", self.spec["parallelio"].prefix)
-                )
+                args.append(self.define("PIO_ROOT", self.spec["parallelio"].prefix))
 
             # NetCDF-Fortran
             if "netcdf-fortran" in self.spec:
@@ -113,17 +125,13 @@ class Cece(CMakePackage):
 
         # NetCDF-C
         if "netcdf-c" in self.spec:
-            args.append(
-                self.define("NetCDF_ROOT", self.spec["netcdf-c"].prefix)
-            )
+            args.append(self.define("NetCDF_ROOT", self.spec["netcdf-c"].prefix))
 
         # CUDA architecture
         if "+cuda" in self.spec:
             cuda_arch = self.spec.variants["cuda_arch"].value
             if cuda_arch:
-                args.append(
-                    self.define("Kokkos_ARCH_" + cuda_arch[0].upper(), True)
-                )
+                args.append(self.define("Kokkos_ARCH_" + cuda_arch[0].upper(), True))
 
         return args
 
