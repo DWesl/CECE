@@ -280,6 +280,9 @@ CeceConfig ParseConfig(const std::string& filename) {
     if (root["cece_data"]) {
         data_node = root["cece_data"];
     }
+    if (data_node && data_node["debug_level"]) {
+        config.cece_data.debug_level = data_node["debug_level"].as<int>();
+    }
     if (data_node && data_node["streams"]) {
         for (auto const& stream_node : data_node["streams"]) {
             CeceDataStreamConfig stream;
@@ -414,8 +417,8 @@ CeceConfig ParseConfig(const std::string& filename) {
         if (driver_node["timestep_seconds"]) {
             config.driver_config.timestep_seconds = driver_node["timestep_seconds"].as<int>();
         }
-        if (driver_node["mesh_file"]) {
-            config.driver_config.mesh_file = driver_node["mesh_file"].as<std::string>();
+        if (driver_node["gridspec_file"]) {
+            config.driver_config.gridspec_file = driver_node["gridspec_file"].as<std::string>();
         }
         if (driver_node["grid"]) {
             auto grid_node = driver_node["grid"];
@@ -424,6 +427,9 @@ CeceConfig ParseConfig(const std::string& filename) {
             }
             if (grid_node["ny"]) {
                 config.driver_config.grid.ny = grid_node["ny"].as<int>();
+            }
+            if (grid_node["nz"]) {
+                config.driver_config.grid.nz = grid_node["nz"].as<int>();
             }
             if (grid_node["lon_min"]) {
                 config.driver_config.grid.lon_min = grid_node["lon_min"].as<double>();

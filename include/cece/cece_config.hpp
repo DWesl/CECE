@@ -135,6 +135,7 @@ struct CeceDataStreamConfig {
  */
 struct CeceDataConfig {
     std::vector<CeceDataStreamConfig> streams;  ///< List of input streams.
+    int debug_level = 0;                        ///< TIDE/strdata debug verbosity level (0=off, 1=time-matching info).
 };
 
 /**
@@ -171,6 +172,7 @@ struct DiagnosticConfig {
 struct DriverGridConfig {
     int nx = 4;               ///< Grid points in X direction (default: 4).
     int ny = 4;               ///< Grid points in Y direction (default: 4).
+    int nz = 1;               ///< Grid points in Z (vertical) direction (default: 1).
     double lon_min = -135.0;  ///< Minimum longitude (default: -135.0).
     double lon_max = 135.0;   ///< Maximum longitude (default: 135.0).
     double lat_min = -67.5;   ///< Minimum latitude (default: -67.5).
@@ -185,9 +187,10 @@ struct DriverConfig {
     std::string start_time = "2020-01-01T00:00:00";  ///< ISO8601 start time (default: 2020-01-01T00:00:00).
     std::string end_time = "2020-01-02T00:00:00";    ///< ISO8601 end time (default: 2020-01-02T00:00:00).
     int timestep_seconds = 3600;                     ///< Timestep in seconds (default: 3600).
-    std::string mesh_file;                           ///< Path to ESMF mesh file (optional, default: null).
-    DriverGridConfig grid;                           ///< Grid configuration for generated Gaussian grid.
     int stacking_refresh_interval_seconds = 0;       ///< Stacking engine refresh interval in seconds (0 means use base timestep).
+    std::string
+        gridspec_file;      ///< Path to ESMF GRIDSPEC NetCDF file (optional). If set, loaded instead of generating a grid from driver.grid params.
+    DriverGridConfig grid;  ///< Grid configuration for generated Gaussian grid.
 };
 
 /**

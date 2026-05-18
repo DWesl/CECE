@@ -138,7 +138,8 @@ void cece_core_get_species_name(void* data_ptr, int* index, char* name, int* nam
  * @param lat_max Output: maximum latitude
  * @param rc Return code (0 = success, non-zero = error)
  */
-void cece_core_get_grid_config(void* data_ptr, int* nx, int* ny, double* lon_min, double* lon_max, double* lat_min, double* lat_max, int* rc) {
+void cece_core_get_grid_config(void* data_ptr, int* nx, int* ny, int* nz, double* lon_min, double* lon_max, double* lat_min, double* lat_max,
+                               int* rc) {
     if (rc != nullptr) {
         *rc = 0;
     }
@@ -154,7 +155,7 @@ void cece_core_get_grid_config(void* data_ptr, int* nx, int* ny, double* lon_min
     auto* internal_data = static_cast<cece::CeceInternalData*>(data_ptr);
 
     // Check output pointers
-    if (nx == nullptr || ny == nullptr || lon_min == nullptr || lon_max == nullptr || lat_min == nullptr || lat_max == nullptr) {
+    if (nx == nullptr || ny == nullptr || nz == nullptr || lon_min == nullptr || lon_max == nullptr || lat_min == nullptr || lat_max == nullptr) {
         std::cerr << "ERROR: cece_core_get_grid_config - null output pointer" << std::endl;
         if (rc != nullptr) {
             *rc = -1;
@@ -165,13 +166,30 @@ void cece_core_get_grid_config(void* data_ptr, int* nx, int* ny, double* lon_min
     // Get grid configuration from parsed YAML config
     *nx = internal_data->config.driver_config.grid.nx;
     *ny = internal_data->config.driver_config.grid.ny;
+    *nz = internal_data->config.driver_config.grid.nz;
     *lon_min = internal_data->config.driver_config.grid.lon_min;
     *lon_max = internal_data->config.driver_config.grid.lon_max;
     *lat_min = internal_data->config.driver_config.grid.lat_min;
     *lat_max = internal_data->config.driver_config.grid.lat_max;
 
-    std::cout << "INFO: Grid config retrieved: nx=" << *nx << " ny=" << *ny << " lon_min=" << *lon_min << " lon_max=" << *lon_max
+    std::cout << "INFO: Grid config retrieved: nx=" << *nx << " ny=" << *ny << " nz=" << *nz << " lon_min=" << *lon_min << " lon_max=" << *lon_max
               << " lat_min=" << *lat_min << " lat_max=" << *lat_max << std::endl;
+}
+
+/**
+ * @brief Get the TIDE debug level from the cece_data section of the config.
+ * @param data_ptr Pointer to CeceInternalData
+ * @param level Output: debug level (0=off, 1=time-matching info, ...)
+ * @param rc Return code (0 = success, non-zero = error)
+ */
+void cece_core_get_tide_debug_level(void* data_ptr, int* level, int* rc) {
+    if (rc != nullptr) *rc = 0;
+    if (data_ptr == nullptr || level == nullptr) {
+        if (rc != nullptr) *rc = -1;
+        return;
+    }
+    auto* internal_data = static_cast<cece::CeceInternalData*>(data_ptr);
+    *level = internal_data->config.cece_data.debug_level;
 }
 
 /**
@@ -221,6 +239,40 @@ void cece_core_get_timing_config(void* data_ptr, char* start_time, char* end_tim
 
     std::cout << "INFO: Timing config retrieved: start=" << start_time << " end=" << end_time << " timestep=" << *timestep_seconds << " seconds"
               << std::endl;
+}
+
+/**
+ * @brief Get the gridspec_file path from the parsed YAML config.
+ * @param data_ptr Pointer to CeceInternalData
+ * @param path Output buffer for the file path
+ * @param path_len Output: number of characters written (0 if not set)
+ * @param rc Return code (0 = success, non-zero = error)
+ */
+void cece_core_get_gridspec_file_path(void* data_ptr, char* path, int* path_len, int* rc) {
+    if (rc != nullptr) *rc = 0;
+    if (path_len != nullptr) *path_len = 0;
+
+    if (data_ptr == nullptr || path == nullptr || path_len == nullptr) {
+        std::cerr << "ERROR: cece_core_get_gridspec_file_path - null pointer argument" << std::endl;
+        if (rc != nullptr) *rc = -1;
+        return;
+    }
+
+    auto* internal_data = static_cast<cece::CeceInternalData*>(data_ptr);
+    const std::string& gf = internal_data->config.driver_config.gridspec_file;
+
+    if (gf.empty()) {
+        *path_len = 0;
+        return;
+    }
+
+    const std::size_t path_capacity = 512;
+    const std::size_t max_copy_len = path_capacity - 1;
+    const std::size_t copy_len = (gf.size() < max_copy_len) ? gf.size() : max_copy_len;
+    std::memcpy(path, gf.c_str(), copy_len);
+    path[copy_len] = '\0';
+    *path_len = static_cast<int>(copy_len);
+    std::cout << "INFO: gridspec_file path: " << gf << std::endl;
 }
 
 /**
