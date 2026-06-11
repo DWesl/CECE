@@ -683,6 +683,9 @@ contains
              ! single point stream data, no action required.
           else if (trim(sdat%stream(ns)%mapalgo) == 'passthrough') then
              ! Data is already on the model grid - skip regridding entirely.
+             ! passthrough does not interpolate, remap, or realign longitude.
+             ! It is only valid when source and destination grids match in size,
+             ! coordinate convention, and index order.
              ! A size check against the destination field is performed at first read.
           else
              call shr_sys_abort('ERROR: map algo '//trim(sdat%stream(ns)%mapalgo)//' is not supported')
@@ -1978,17 +1981,27 @@ contains
           if (chkerr(rc,__LINE__,u_FILE_u)) return
 
           if (trim(stream%mapalgo) == 'passthrough') then
-             ! No regridding: directly copy data and validate matching sizes.
+              ! No regridding: directly copy data only when source and destination
+              ! grids are already identical in size, coordinate convention, and
+              ! index order. This branch does not interpolate, remap, or roll longitude.
              block
                real(r8), pointer :: dst_ptr(:) => null()
+
                call dshr_field_getfldptr(field_dst, fldptr1=dst_ptr, rc=rc)
                if (chkerr(rc,__LINE__,u_FILE_u)) return
+
                if (size(dataptr1d) /= size(dst_ptr)) then
                   write(errmsg,'(a,i0,a,i0,a)') &
                        'ERROR: passthrough mapalgo: stream size (', size(dataptr1d), &
                        ') does not match model grid size (', size(dst_ptr), ')'
                   call shr_sys_abort(trim(errmsg))
                end if
+
+               ! NOTE: passthrough intentionally does not perform coordinate
+               ! convention conversion. If source and destination grids differ
+               ! by 0..360 vs -180..180, use a real regridding mapalgo such as
+               ! nearest, bilinear, or conservative remapping, or preprocess the
+               ! input so it matches the destination grid.
                dst_ptr(:) = dataptr1d(:)
              end block
           else if (trim(stream%mapalgo) == 'none') then
