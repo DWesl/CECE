@@ -251,7 +251,7 @@ int CeceStandaloneWriter::WriteTimeStep(const std::unordered_map<std::string, Du
 
         // Write coordinate arrays
         if (use_custom_coords_) {
-            // Use coordinates provided from ESMF grid
+            // Use coordinates provided by the cap from the configured output grid.
             check_nc(nc_put_var_double(ncid, var_lon, lon_coords_.data()), "put_var lon");
             check_nc(nc_put_var_double(ncid, var_lat, lat_coords_.data()), "put_var lat");
         } else {
