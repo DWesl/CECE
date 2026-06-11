@@ -2004,20 +2004,6 @@ contains
                ! input so it matches the destination grid.
                dst_ptr(:) = dataptr1d(:)
              end block
-          !if (trim(stream%mapalgo) == 'passthrough') then
-          !   ! No regridding: directly copy data and validate matching sizes.
-          !   block
-          !     real(r8), pointer :: dst_ptr(:) => null()
-          !     call dshr_field_getfldptr(field_dst, fldptr1=dst_ptr, rc=rc)
-          !     if (chkerr(rc,__LINE__,u_FILE_u)) return
-          !     if (size(dataptr1d) /= size(dst_ptr)) then
-          !        write(errmsg,'(a,i0,a,i0,a)') &
-          !             'ERROR: passthrough mapalgo: stream size (', size(dataptr1d), &
-          !             ') does not match model grid size (', size(dst_ptr), ')'
-          !        call shr_sys_abort(trim(errmsg))
-          !     end if
-          !     dst_ptr(:) = dataptr1d(:)
-          !   end block
           else if (trim(stream%mapalgo) == 'none') then
              ! Single-point stream: no routehandle was created;
              ! broadcast the scalar value to the entire destination field.
