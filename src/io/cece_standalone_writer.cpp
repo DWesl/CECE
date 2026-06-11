@@ -104,6 +104,11 @@ int CeceStandaloneWriter::Initialize(const std::string& start_time_iso8601, int 
     ny_ = ny;
     nz_ = nz;
 
+    // Legacy dimensions-only initialization: clear any prior coordinate state.
+    lon_coords_.clear();
+    lat_coords_.clear();
+    use_custom_coords_ = false;
+
     CECE_LOG_INFO("[CECE] Initializing standalone writer with start time: " + start_time_iso8601);
 
     // Create output directory if it doesn't exist
@@ -124,6 +129,11 @@ int CeceStandaloneWriter::Initialize(const std::string& start_time_iso8601, int 
 int CeceStandaloneWriter::InitializeWithCoords(const std::string& start_time_iso8601, int nx, int ny, int nz, const std::vector<double>& lon_coords,
                                                const std::vector<double>& lat_coords) {
     if (!config_.enabled) return 0;
+
+    if (static_cast<int>(lon_coords.size()) != nx || static_cast<int>(lat_coords.size()) != ny) {
+        CECE_LOG_ERROR("[CECE] Coordinate array sizes do not match writer dimensions");
+        return -1;
+    }
 
     start_time_iso8601_ = start_time_iso8601;
     nx_ = nx;
@@ -251,7 +261,8 @@ int CeceStandaloneWriter::WriteTimeStep(const std::unordered_map<std::string, Du
 
         // Write coordinate arrays
         if (use_custom_coords_) {
-            // Use coordinates provided from ESMF grid
+            // -- Use coordinates provided from ESMF grid
+	    // ++ Use coordinates provided by the cap from the configured output grid.
             check_nc(nc_put_var_double(ncid, var_lon, lon_coords_.data()), "put_var lon");
             check_nc(nc_put_var_double(ncid, var_lat, lat_coords_.data()), "put_var lat");
         } else {
