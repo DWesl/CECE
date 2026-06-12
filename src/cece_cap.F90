@@ -645,6 +645,7 @@ contains
 
 
 
+
           ! Build 1-D cell-center coordinates directly from configured YAML grid bounds.
           ! This keeps standalone NetCDF output lon/lat metadata consistent with the
           ! configured CECE output grid and avoids falling back to the legacy writer,
@@ -676,6 +677,50 @@ contains
 
             deallocate(lon_coords, lat_coords)
           end block
+
+          ! Extract coordinates from ESMF grid and call enhanced writer initialization
+          !block
+          !  real(ESMF_KIND_R8), pointer :: grid_lon(:,:), grid_lat(:,:)
+          !  real(c_double), allocatable :: lon_coords(:), lat_coords(:)
+          !  integer :: i
+
+          !  ! Get coordinates from ESMF grid (2D arrays)
+          !  call ESMF_GridGetCoord(grid, coordDim=1, localDE=0, staggerloc=ESMF_STAGGERLOC_CENTER, &
+          !                        farrayptr=grid_lon, rc=rc)
+          !  if (rc /= ESMF_SUCCESS) then
+          !    write(*,'(A,I0)') "WARNING: [CECE] Failed to get longitude coordinates: rc=", rc
+          !    ! Fall back to legacy initialization
+          !    call cece_core_writer_initialize(g_cece_data_ptr, int(nx, c_int), int(ny, c_int), &
+          !                                    int(nz, c_int), start_time_str, int(len_trim(start_time_str), c_int), c_rc)
+          !  else
+          !    call ESMF_GridGetCoord(grid, coordDim=2, localDE=0, staggerloc=ESMF_STAGGERLOC_CENTER, &
+          !                          farrayptr=grid_lat, rc=rc)
+          !    if (rc /= ESMF_SUCCESS) then
+          !      write(*,'(A,I0)') "WARNING: [CECE] Failed to get latitude coordinates: rc=", rc
+          !      ! Fall back to legacy initialization
+          !      call cece_core_writer_initialize(g_cece_data_ptr, int(nx, c_int), int(ny, c_int), &
+          !                                      int(nz, c_int), start_time_str, int(len_trim(start_time_str), c_int), c_rc)
+          !    else
+          !      ! Extract 1D coordinate arrays from 2D ESMF grid coordinates
+          !      allocate(lon_coords(nx), lat_coords(ny))
+          !      do i = 1, nx
+          !        lon_coords(i) = real(grid_lon(i,1), c_double)  ! First row, all columns
+          !      end do
+          !      do i = 1, ny
+          !        lat_coords(i) = real(grid_lat(1,i), c_double)  ! First column, all rows
+          !      end do
+
+          !      write(*,'(A,2F10.3)') "INFO: [CECE] Grid longitude range: ", lon_coords(1), lon_coords(nx)
+          !      write(*,'(A,2F10.3)') "INFO: [CECE] Grid latitude range: ", lat_coords(1), lat_coords(ny)
+
+          !      ! Call enhanced writer initialization with coordinates
+          !      call cece_core_writer_initialize_with_coords(g_cece_data_ptr, int(nx, c_int), int(ny, c_int), &
+          !                                                 int(nz, c_int), lon_coords, lat_coords, &
+          !                                                 start_time_str, int(len_trim(start_time_str), c_int), c_rc)
+          !      deallocate(lon_coords, lat_coords)
+          !    end if
+          !  end if
+          !end block
 
           rc = int(c_rc)
           if (rc /= ESMF_SUCCESS) then
