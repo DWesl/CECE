@@ -644,6 +644,7 @@ contains
                                       h*3600 + m*60 + s, c_double)
 
 
+
           ! Build 1-D cell-center coordinates directly from configured YAML grid bounds.
           ! This keeps standalone NetCDF output lon/lat metadata consistent with the
           ! configured CECE output grid and avoids falling back to the legacy writer,
