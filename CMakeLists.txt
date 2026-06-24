@@ -19,6 +19,11 @@ else()
 endif()
 
 list(INSERT CMAKE_MODULE_PATH 0 "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+list(INSERT CMAKE_PREFIX_PATH 0 "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+
+if(EXISTS "/opt/views/view")
+  list(APPEND CMAKE_PREFIX_PATH "/opt/views/view")
+endif()
 
 # Allow find_package to use <PackageName>_ROOT variables
 if(POLICY CMP0074)
@@ -59,7 +64,7 @@ message(STATUS "  OpenMP: ${Kokkos_ENABLE_OPENMP}")
 message(STATUS "  CUDA: ${Kokkos_ENABLE_CUDA}")
 message(STATUS "  HIP: ${Kokkos_ENABLE_HIP}")
 
-FetchContent_Declare(kokkos GIT_REPOSITORY https://github.com/kokkos/kokkos.git GIT_TAG 4.2.00)
+FetchContent_Declare(kokkos GIT_REPOSITORY https://github.com/kokkos/kokkos.git GIT_TAG 5.1.1)
 FetchContent_MakeAvailable(kokkos)
 
 # YAML-CPP
@@ -83,6 +88,32 @@ FetchContent_Declare(
 )
 set(RC_ENABLE_GTEST ON CACHE BOOL "Enable RapidCheck GTest integration" FORCE)
 FetchContent_MakeAvailable(rapidcheck)
+
+# Include Kokkos's bundled reference mdspan headers globally
+include_directories(SYSTEM "${kokkos_SOURCE_DIR}/tpls/mdspan/include")
+
+# HELM Ingestion (subdirectories added individually because HELM has no root CMakeLists)
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/extern/helm/libs/tick/CMakeLists.txt")
+  set(HELM_BUILD_TESTING_SAVE ${BUILD_TESTING})
+  set(BUILD_TESTING OFF)
+
+  add_subdirectory(extern/helm/libs/logs EXCLUDE_FROM_ALL)
+  add_subdirectory(extern/helm/libs/tick EXCLUDE_FROM_ALL)
+  add_subdirectory(extern/helm/libs/span EXCLUDE_FROM_ALL)
+  add_subdirectory(extern/helm/libs/conf EXCLUDE_FROM_ALL)
+  add_subdirectory(extern/helm/libs/halo EXCLUDE_FROM_ALL)
+  add_subdirectory(extern/helm/libs/amio EXCLUDE_FROM_ALL)
+  add_subdirectory(extern/helm/libs/axis EXCLUDE_FROM_ALL)
+  add_subdirectory(extern/helm/libs/blend EXCLUDE_FROM_ALL)
+  add_subdirectory(extern/helm/libs/dagr EXCLUDE_FROM_ALL)
+
+  set(BUILD_TESTING ${HELM_BUILD_TESTING_SAVE})
+else()
+  message(
+    FATAL_ERROR
+    "HELM submodule not found at extern/helm. Please run 'git submodule update --init --recursive'"
+  )
+endif()
 
 # ESMF and NUOPC are required dependencies.
 find_package(ESMF)
@@ -673,3 +704,20 @@ if(CLANG_TIDY_EXECUTABLE)
 else()
   message(STATUS "clang-tidy not found. Code analysis targets disabled.")
 endif()
+
+# --- Standalone Driver Executable ---
+add_executable(cece_standalone_driver src/main.cpp)
+target_link_libraries(
+  cece_standalone_driver
+  PRIVATE
+    cece
+    HELM::DAGR
+    HELM::SPAN
+    HELM::TICK
+    AMIO::amio_core
+    HELM::AXIS
+    HELM::BLEND
+    Kokkos::kokkos
+    yaml-cpp
+    MPI::MPI_CXX
+)

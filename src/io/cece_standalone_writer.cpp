@@ -289,7 +289,7 @@ int CeceStandaloneWriter::WriteTimeStep(const std::unordered_map<std::string, Du
             // Sync to host (cast away const to allow sync)
             auto& view_rw = const_cast<DualView3D&>(view);
             view_rw.sync<Kokkos::HostSpace>();
-            auto h_view = view_rw.h_view;
+            auto h_view = view_rw.view_host();
 
             // Prepare buffer.
             // CECE View is (nx, ny, nz) with LayoutLeft (Fortran).
