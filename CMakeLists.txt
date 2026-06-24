@@ -274,7 +274,7 @@ else()
 endif()
 
 if(CECE_HAS_FORTRAN)
-  target_link_libraries(cece PUBLIC tide)
+  target_link_libraries(cece PUBLIC tide cece_tide)
 endif()
 
 if(NetCDF_ROOT)
@@ -431,6 +431,10 @@ else()
   target_link_libraries(test_field_pointer_passing PRIVATE cece GTest::gtest_main)
 endif()
 
+# C++ Tide Unit Tests
+add_executable(test_tide_cpp tests/test_tide_cpp.cpp)
+target_link_libraries(test_tide_cpp PRIVATE cece GTest::gtest_main)
+
 # Standalone NUOPC driver
 add_subdirectory(standalone_nuopc)
 
@@ -582,6 +586,7 @@ gtest_discover_tests(test_cece_clock_run_loop)
 gtest_discover_tests(test_bdsnp)
 gtest_discover_tests(test_field_creation)
 gtest_discover_tests(test_field_pointer_passing)
+gtest_discover_tests(test_tide_cpp)
 
 # --- Python Bindings ---
 
