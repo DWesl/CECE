@@ -204,6 +204,7 @@ set(
   src/cece_config_path.cpp
   src/cece_c_api.cpp
   src/cece_config_validator.cpp
+  src/cece_helm_graph.cpp
 )
 
 if(CECE_HAS_FORTRAN)
@@ -274,7 +275,10 @@ else()
 endif()
 
 if(CECE_HAS_FORTRAN)
-  target_link_libraries(cece PUBLIC tide cece_tide)
+  target_link_libraries(
+    cece
+    PUBLIC tide cece_tide HELM::DAGR HELM::HALO HELM::TICK HELM::SPAN
+  )
 endif()
 
 if(NetCDF_ROOT)
@@ -433,7 +437,10 @@ endif()
 
 # C++ Tide Unit Tests
 add_executable(test_tide_cpp tests/test_tide_cpp.cpp)
-target_link_libraries(test_tide_cpp PRIVATE cece GTest::gtest_main)
+target_link_libraries(
+  test_tide_cpp
+  PRIVATE cece HELM::DAGR HELM::HALO HELM::TICK HELM::SPAN GTest::gtest
+)
 
 # Standalone NUOPC driver
 add_subdirectory(standalone_nuopc)
