@@ -212,7 +212,6 @@ if(CECE_HAS_FORTRAN)
 
   list(
     APPEND CECE_SRCS
-    src/cece_cap.F90
     src/physics/cece_fortran_bridge.cpp
     src/physics/legacy_fortran.F90
     src/physics/cece_sea_salt_fortran_bridge.cpp
@@ -277,7 +276,7 @@ endif()
 if(CECE_HAS_FORTRAN)
   target_link_libraries(
     cece
-    PUBLIC tide cece_tide HELM::DAGR HELM::HALO HELM::TICK HELM::SPAN
+    PUBLIC cece_tide HELM::DAGR HELM::HALO HELM::TICK HELM::SPAN
   )
 endif()
 
@@ -442,6 +441,10 @@ target_link_libraries(
   PRIVATE cece HELM::DAGR HELM::HALO HELM::TICK HELM::SPAN GTest::gtest
 )
 
+# Parity Regression Tests
+add_executable(test_tide_c_parity tests/test_tide_c_parity.cpp)
+target_link_libraries(test_tide_c_parity PRIVATE cece GTest::gtest_main)
+
 # Standalone NUOPC driver
 add_subdirectory(standalone_nuopc)
 
@@ -594,6 +597,7 @@ gtest_discover_tests(test_bdsnp)
 gtest_discover_tests(test_field_creation)
 gtest_discover_tests(test_field_pointer_passing)
 gtest_discover_tests(test_tide_cpp)
+gtest_discover_tests(test_tide_c_parity)
 
 # --- Python Bindings ---
 
