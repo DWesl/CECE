@@ -34,7 +34,7 @@ class Cece(CMakePackage):
     variant(
         "fortran",
         default=True,
-        description="Enable Fortran support (NUOPC cap, TIDE I/O)",
+        description="Enable Fortran support (NUOPC cap, CeceIO)",
     )
     variant("python", default=False, description="Build Python bindings")
 
@@ -46,10 +46,12 @@ class Cece(CMakePackage):
     depends_on("netcdf-c")
     depends_on("netcdf-fortran", when="+fortran")
 
-    # Kokkos and yaml-cpp are fetched via FetchContent, but if the user
-    # prefers system installs they can be added here:
-    # depends_on("kokkos@4.2: +serial +openmp", when="+openmp ~cuda ~hip")
-    # depends_on("yaml-cpp@0.8:")
+    # Kokkos and yaml-cpp are formally required dependencies
+    depends_on("kokkos@5.1.1:")
+    depends_on("kokkos+openmp", when="+openmp")
+    depends_on("kokkos+cuda", when="+cuda")
+    depends_on("kokkos+hip", when="+hip")
+    depends_on("yaml-cpp@0.8.0:")
 
     # On macOS with Apple Clang, OpenMP requires llvm-openmp
     depends_on("llvm-openmp", when="+openmp platform=darwin", type=("build", "link"))
@@ -71,6 +73,7 @@ class Cece(CMakePackage):
     def cmake_args(self):
         args = [
             self.define("CMAKE_CXX_STANDARD", "20"),
+            self.define("FETCHCONTENT_TRY_FIND_PACKAGE_MODE", "ALWAYS"),
             self.define("Kokkos_ENABLE_SERIAL", True),
             self.define_from_variant("Kokkos_ENABLE_OPENMP", "openmp"),
             self.define_from_variant("Kokkos_ENABLE_CUDA", "cuda"),
