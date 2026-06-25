@@ -33,6 +33,9 @@ cece_data:
       yearFirst: 2000
       yearLast: 2010
       yearAlign: 2020
+      taxmode: "cycle"
+      tintalgo: "linear"
+      mapalgo: "consd"
       variables:
         - file: "MACCity"
           model: "MACCITY_CO"
@@ -41,11 +44,28 @@ cece_data:
       yearFirst: 2000
       yearLast: 2010
       yearAlign: 2020
+      taxmode: "cycle"
+      tintalgo: "linear"
+      mapalgo: "consd"
       variables:
         - file: "MACCity"
           model: "EMEP_CO"
     - name: "MASK_EUROPE"
       file: "/work/data/Canada_mask.gen.1x1.nc"
+      yearFirst: 2000
+      yearLast: 2010
+      yearAlign: 2020
+      taxmode: "cycle"
+      tintalgo: "linear"
+      mapalgo: "consd"
       variables:
         - file: "MASK"
           model: "MASK_EUROPE"
+
+output:
+  enabled: true
+  directory: ./cece_output
+  filename_pattern: "cece_ex2_{YYYY}{MM}{DD}_{HH}{mm}{ss}.nc"
+  frequency_steps: 1
+  fields:
+    - co

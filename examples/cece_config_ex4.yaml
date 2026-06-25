@@ -35,6 +35,9 @@ cece_data:
       yearFirst: 2018
       yearLast: 2018
       yearAlign: 2020
+      taxmode: "cycle"
+      tintalgo: "linear"
+      mapalgo: "consd"
       variables:
         - file: "NO_SHP"
           model: "HTAP_NO"
@@ -42,3 +45,11 @@ cece_data:
 diagnostics:
   output_interval_seconds: 3600
   variables: ["no"]
+
+output:
+  enabled: true
+  directory: ./cece_output
+  filename_pattern: "cece_ex4_{YYYY}{MM}{DD}_{HH}{mm}{ss}.nc"
+  frequency_steps: 1
+  fields:
+    - no

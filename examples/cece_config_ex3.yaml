@@ -22,6 +22,12 @@ cece_data:
   streams:
     - name: "MACCITY_CO"
       file: "/work/data/MACCity_4x5.nc"
+      yearFirst: 2000
+      yearLast: 2010
+      yearAlign: 2020
+      taxmode: "cycle"
+      tintalgo: "linear"
+      mapalgo: "consd"
       variables:
         - file: "MACCity"
           model: "MACCITY_CO"
@@ -29,3 +35,11 @@ cece_data:
 diagnostics:
   output_interval_seconds: 3600
   variables: ["co"]
+
+output:
+  enabled: true
+  directory: ./cece_output
+  filename_pattern: "cece_ex3_{YYYY}{MM}{DD}_{HH}{mm}{ss}.nc"
+  frequency_steps: 1
+  fields:
+    - co

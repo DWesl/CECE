@@ -48,3 +48,11 @@ cece_data:
 diagnostics:
   output_interval_seconds: 3600
   variables: ["no"]
+
+output:
+  enabled: true
+  directory: ./cece_output
+  filename_pattern: "cece_ex6_{YYYY}{MM}{DD}_{HH}{mm}{ss}.nc"
+  frequency_steps: 1
+  fields:
+    - no

@@ -14,14 +14,13 @@ driver:
   start_time: "2020-07-01T00:00:00"
   end_time: "2020-07-01T06:00:00"
   timestep_seconds: 3600
-
-grid:
-  nx: 10
-  ny: 10
-  lon_min: -100.0
-  lon_max: -80.0
-  lat_min: 30.0
-  lat_max: 45.0
+  grid:
+    nx: 10
+    ny: 10
+    lon_min: -100.0
+    lon_max: -80.0
+    lat_min: 30.0
+    lat_max: 45.0
 
 physics_schemes:
   # --- BDSNP Soil NO Module (runs first) ---
