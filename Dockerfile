@@ -19,7 +19,10 @@ RUN apt-get update && apt-get install -y \
     curl \
     openmpi-bin \
     libopenmpi-dev \
-    libnetcdf-dev \
+    libnetcdf-mpi-dev \
+    libblosc-dev \
+    libbz2-dev \
+    libxml2-dev \
     libgtest-dev \
     && rm -rf /var/lib/apt/lists/*
 
