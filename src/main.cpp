@@ -15,6 +15,8 @@
 
 // HELM Headers
 #include <dagr/dagr.hpp>
+#include <halo/communicator.hpp>
+#include <halo/environment.hpp>
 #include <span/span.hpp>
 #include <tick/tick.hpp>
 
@@ -38,12 +40,15 @@ int main(int argc, char* argv[]) {
     // 1. Initialize MPI with thread support
     int provided = 0;
     MPI_Init_thread(&argc, &argv, MPI_THREAD_MULTIPLE, &provided);
-    int my_rank = 0;
-    MPI_Comm_rank(MPI_COMM_WORLD, &my_rank);
 
     // 2. Initialize Kokkos (allocates execution resources on GPU or CPU)
     Kokkos::initialize(argc, argv);
     {
+        // Initialize the HALO Environment & Communicator
+        halo::Environment::initialize();
+        halo::Communicator world(MPI_COMM_WORLD);
+        const int my_rank = world.rank();
+
         std::string config_file = "cece_control_mock.yaml";
         if (argc > 1) {
             config_file = argv[1];

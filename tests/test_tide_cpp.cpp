@@ -3,6 +3,7 @@
 
 #include <Kokkos_Core.hpp>
 #include <dagr/dagr.hpp>
+#include <halo/environment.hpp>
 
 #include "cece/cece_io.hpp"
 
@@ -72,6 +73,9 @@ class KokkosMpiEnvironment : public ::testing::Environment {
         if (!Kokkos::is_initialized()) {
             Kokkos::initialize();
         }
+
+        // Initialize HALO Environment
+        halo::Environment::initialize();
     }
     void TearDown() override {
         // Finalize Kokkos
