@@ -87,12 +87,10 @@ void cece_core_finalize(void* data_ptr, int* rc) {
         }
     }
 
-    // 3. Delete internal state — this destroys all Kokkos::Views.
-    // NOTE: Do NOT call Kokkos::finalize() here. When running inside an ESMF component,
-    // ESMF 8.8.0 uses Kokkos internally and owns the Kokkos lifecycle. Calling
-    // Kokkos::finalize() before ESMF_Finalize() causes a segfault in ESMF teardown.
-    // Kokkos will be finalized by ESMF_Finalize() in the driver.
+    // 3. Save Kokkos initialization state before deleting internal state
+    bool finalize_kokkos = internal_data->kokkos_initialized_here;
 
+    // Delete internal state — this destroys all Kokkos::Views.
     // Final fence before deletion to ensure all device work is complete
     Kokkos::fence("CECE::Finalize::PreDelete");
 
@@ -111,7 +109,14 @@ void cece_core_finalize(void* data_ptr, int* rc) {
         }
     }
 
-    std::cout << "INFO: Skipping Kokkos finalization (owned by ESMF)\n";
+    if (finalize_kokkos) {
+        if (Kokkos::is_initialized() && !Kokkos::is_finalized()) {
+            std::cout << "INFO: Finalizing Kokkos execution space (initialized by CECE)\n";
+            Kokkos::finalize();
+        }
+    } else {
+        std::cout << "INFO: Skipping Kokkos finalization (owned by ESMF)\n";
+    }
     std::cout << "INFO: CECE Finalize completed successfully\n";
 
     if (rc != nullptr) {

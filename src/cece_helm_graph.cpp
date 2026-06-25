@@ -3,13 +3,14 @@
 #include <mpi.h>
 #include <yaml-cpp/yaml.h>
 
+#include <blend/helm_math_blend.hpp>
 #include <dagr/pipeline_config.hpp>
 #include <fstream>
 #include <halo/communicator.hpp>
 #include <stdexcept>
 #include <tick/duration.hpp>
 
-void CompileHelmGraph(const std::string& config_file, std::unique_ptr<dagr::GraphOrchestrator>& dagr, cece::io::Tide& tide) {
+void CompileHelmGraph(const std::string& config_file, std::unique_ptr<dagr::GraphOrchestrator>& dagr, cece::io::CeceIO& cece_io) {
     std::ifstream f(config_file);
     if (!f.good()) {
         throw std::runtime_error("File not found: " + config_file);
@@ -23,8 +24,8 @@ void CompileHelmGraph(const std::string& config_file, std::unique_ptr<dagr::Grap
     pc.deadlock_timeout_s = 30;
     pc.shutdown_timeout_s = 30;
 
-    // Load active variables from Tide and dynamically compile them into HELM Stream Descriptors
-    for (const auto& var_name : tide.GetOutputVarNames()) {
+    // Load active variables from CeceIO and dynamically compile them into HELM Stream Descriptors
+    for (const auto& var_name : cece_io.GetOutputVarNames()) {
         dagr::Stream_Descriptor stream;
         stream.name = var_name;
         stream.temporal_profile = dagr::Temporal_Profile::linear;
@@ -44,3 +45,18 @@ void CompileHelmGraph(const std::string& config_file, std::unique_ptr<dagr::Grap
     // Allocate the GraphOrchestrator
     dagr = std::make_unique<dagr::GraphOrchestrator>(std::move(pc), std::move(world));
 }
+
+namespace blend {
+
+void dispatch_blend(const double* left_ptr, const double* right_ptr, double* out_ptr, std::size_t count, double alpha, int profile_tag) {
+    // Create unmanaged non-owning flat Kokkos views matching BLEND expectation
+    span::FieldView left(const_cast<double*>(left_ptr), count);
+    span::FieldView right(const_cast<double*>(right_ptr), count);
+    span::FieldView target(out_ptr, count);
+
+    BlendProfile profile = (profile_tag == 0) ? BlendProfile::Linear : BlendProfile::Step;
+
+    execute_blend(left, right, target, alpha, profile);
+}
+
+}  // namespace blend
