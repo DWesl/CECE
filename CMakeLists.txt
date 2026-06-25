@@ -120,6 +120,12 @@ find_package(ESMF)
 message(STATUS "Found ESMF: ${ESMF_VERSION}")
 message(STATUS "ESMF include dirs: ${ESMF_INCLUDE_DIRS}")
 
+# Find standard NetCDF using CONFIG mode
+find_package(netCDF CONFIG REQUIRED)
+if(netCDF_FOUND AND NOT netCDF_INCLUDE_DIRS)
+  set(netCDF_INCLUDE_DIRS "${netCDF_INCLUDE_DIR}")
+endif()
+
 # Discovery PIO and NetCDF from ESMF if possible
 function(find_root_by_file root_var filename)
   if(NOT ${root_var})
@@ -188,9 +194,11 @@ set(
   src/physics/cece_emission_activity.cpp
   src/physics/cece_megan3.cpp
   src/physics/cece_bdsnp.cpp
-  src/io/cece_data_ingestor.cpp
-  src/io/cece_diagnostic_manager.cpp
-  src/io/cece_standalone_writer.cpp
+  src/cece_data_ingestor.cpp
+  src/cece_diagnostic_manager.cpp
+  src/cece_standalone_writer.cpp
+  src/cece_regridder_utils.cpp
+  src/cece_io.cpp
   src/cece_core_writer_init.cpp
   src/cece_core_driver_config.cpp
   src/cece_core_advertise.cpp
@@ -208,8 +216,6 @@ set(
 )
 
 if(CECE_HAS_FORTRAN)
-  add_subdirectory(src/io/tide)
-
   list(
     APPEND CECE_SRCS
     src/physics/cece_fortran_bridge.cpp
@@ -273,17 +279,14 @@ else()
   target_link_libraries(cece PUBLIC Kokkos::kokkos yaml-cpp)
 endif()
 
-if(CECE_HAS_FORTRAN)
-  target_link_libraries(
-    cece
-    PUBLIC cece_tide HELM::DAGR HELM::HALO HELM::TICK HELM::SPAN
-  )
-endif()
+target_link_libraries(
+  cece
+  PUBLIC amio_core HELM::SPAN blend axis HELM::DAGR HELM::HALO HELM::TICK
+)
 
-if(NetCDF_ROOT)
-  if(EXISTS "${NetCDF_ROOT}/lib/libnetcdf.so")
-    target_link_libraries(cece PUBLIC "${NetCDF_ROOT}/lib/libnetcdf.so")
-  endif()
+if(netCDF_FOUND)
+  target_link_libraries(cece PUBLIC netCDF::netcdf)
+  target_include_directories(cece PUBLIC ${netCDF_INCLUDE_DIRS})
 endif()
 
 if(CECE_HAS_FORTRAN AND NetCDFF_ROOT)
@@ -308,8 +311,10 @@ enable_testing()
 add_executable(test_driver_configuration tests/test_driver_configuration.cpp)
 target_link_libraries(test_driver_configuration PRIVATE cece GTest::gtest_main)
 
-add_executable(test_driver_config_validation tests/test_driver_config_validation.cpp)
-target_link_libraries(test_driver_config_validation PRIVATE cece iso8601_utils GTest::gtest_main)
+if(ESMF_FOUND)
+  add_executable(test_driver_config_validation tests/test_driver_config_validation.cpp)
+  target_link_libraries(test_driver_config_validation PRIVATE cece iso8601_utils GTest::gtest_main)
+endif()
 
 add_executable(test_driver_clock_management tests/test_driver_clock_management.cpp)
 target_link_libraries(test_driver_clock_management PRIVATE GTest::gtest_main)
@@ -320,11 +325,13 @@ target_link_libraries(test_clock_operations_unit PRIVATE GTest::gtest_main)
 add_executable(test_driver_integration_end_to_end tests/test_driver_integration_end_to_end.cpp)
 target_link_libraries(test_driver_integration_end_to_end PRIVATE GTest::gtest_main)
 
-add_executable(test_cece_cap tests/test_cece_cap.cpp)
-target_link_libraries(test_cece_cap PRIVATE cece GTest::gtest_main)
+if(ESMF_FOUND)
+  add_executable(test_cece_cap tests/test_cece_cap.cpp)
+  target_link_libraries(test_cece_cap PRIVATE cece GTest::gtest_main)
 
-add_executable(test_diagnostics tests/test_diagnostics.cpp)
-target_link_libraries(test_diagnostics PRIVATE cece GTest::gtest)
+  add_executable(test_diagnostics tests/test_diagnostics.cpp)
+  target_link_libraries(test_diagnostics PRIVATE cece GTest::gtest)
+endif()
 
 add_executable(test_cece_ingestor tests/test_cece_ingestor.cpp)
 target_link_libraries(test_cece_ingestor PRIVATE cece GTest::gtest_main)
@@ -350,7 +357,7 @@ target_link_libraries(test_vertical_distribution_single PRIVATE cece GTest::gtes
 add_executable(test_field_resolution_priority tests/test_field_resolution_priority.cpp)
 target_link_libraries(test_field_resolution_priority PRIVATE cece GTest::gtest_main)
 
-if(CECE_HAS_FORTRAN)
+if(CECE_HAS_FORTRAN AND ESMF_FOUND)
   add_library(test_helpers STATIC tests/test_helpers.F90)
   target_include_directories(test_helpers PUBLIC ${ESMF_INCLUDE_DIRS})
   target_link_libraries(test_helpers PUBLIC ESMF::ESMF)
@@ -419,19 +426,21 @@ target_link_libraries(test_megan3 PRIVATE cece GTest::gtest_main rapidcheck rapi
 add_executable(test_bdsnp tests/test_bdsnp.cpp)
 target_link_libraries(test_bdsnp PRIVATE cece GTest::gtest rapidcheck rapidcheck_gtest)
 
-add_executable(test_field_creation tests/test_field_creation.cpp)
-if(CECE_HAS_FORTRAN AND TARGET test_helpers)
-  target_link_libraries(test_field_creation PRIVATE cece test_helpers GTest::gtest_main)
-else()
-  target_link_libraries(test_field_creation PRIVATE cece GTest::gtest_main)
-endif()
+if(ESMF_FOUND)
+  add_executable(test_field_creation tests/test_field_creation.cpp)
+  if(CECE_HAS_FORTRAN AND TARGET test_helpers)
+    target_link_libraries(test_field_creation PRIVATE cece test_helpers GTest::gtest_main)
+  else()
+    target_link_libraries(test_field_creation PRIVATE cece GTest::gtest_main)
+  endif()
 
-# Unit tests for field pointer passing (Requirement R5)
-add_executable(test_field_pointer_passing tests/test_field_pointer_passing.cpp)
-if(CECE_HAS_FORTRAN AND TARGET test_helpers)
-  target_link_libraries(test_field_pointer_passing PRIVATE cece test_helpers GTest::gtest_main)
-else()
-  target_link_libraries(test_field_pointer_passing PRIVATE cece GTest::gtest_main)
+  # Unit tests for field pointer passing (Requirement R5)
+  add_executable(test_field_pointer_passing tests/test_field_pointer_passing.cpp)
+  if(CECE_HAS_FORTRAN AND TARGET test_helpers)
+    target_link_libraries(test_field_pointer_passing PRIVATE cece test_helpers GTest::gtest_main)
+  else()
+    target_link_libraries(test_field_pointer_passing PRIVATE cece GTest::gtest_main)
+  endif()
 endif()
 
 # C++ Tide Unit Tests
@@ -440,13 +449,16 @@ target_link_libraries(
   test_tide_cpp
   PRIVATE cece HELM::DAGR HELM::HALO HELM::TICK HELM::SPAN GTest::gtest
 )
+target_compile_definitions(test_tide_cpp PRIVATE CECE_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
 
 # Parity Regression Tests
 add_executable(test_tide_c_parity tests/test_tide_c_parity.cpp)
 target_link_libraries(test_tide_c_parity PRIVATE cece GTest::gtest_main)
 
 # Standalone NUOPC driver
-add_subdirectory(standalone_nuopc)
+if(ESMF_FOUND)
+  add_subdirectory(standalone_nuopc)
+endif()
 
 # Python script tests
 find_package(Python3 COMPONENTS Interpreter)
@@ -567,18 +579,15 @@ endif()
 
 include(GoogleTest)
 gtest_discover_tests(test_driver_configuration)
-gtest_discover_tests(test_driver_config_validation)
 gtest_discover_tests(test_driver_clock_management)
 gtest_discover_tests(test_clock_operations_unit)
 gtest_discover_tests(test_driver_integration_end_to_end)
-gtest_discover_tests(test_cece_cap)
 gtest_discover_tests(test_stacking_engine)
 gtest_discover_tests(test_vertical_distribution_single)
 gtest_discover_tests(test_cece_utils)
 gtest_discover_tests(test_cece_compute)
 gtest_discover_tests(test_physics)
 gtest_discover_tests(test_cece_ingestor)
-gtest_discover_tests(test_diagnostics)
 gtest_discover_tests(test_hemco_mimic)
 gtest_discover_tests(test_field_resolution_priority)
 gtest_discover_tests(test_hemco_parity)
@@ -594,10 +603,16 @@ gtest_discover_tests(test_megan3)
 gtest_discover_tests(test_cece_clock_properties)
 gtest_discover_tests(test_cece_clock_run_loop)
 gtest_discover_tests(test_bdsnp)
-gtest_discover_tests(test_field_creation)
-gtest_discover_tests(test_field_pointer_passing)
 gtest_discover_tests(test_tide_cpp)
 gtest_discover_tests(test_tide_c_parity)
+
+if(ESMF_FOUND)
+  gtest_discover_tests(test_driver_config_validation)
+  gtest_discover_tests(test_cece_cap)
+  gtest_discover_tests(test_diagnostics)
+  gtest_discover_tests(test_field_creation)
+  gtest_discover_tests(test_field_pointer_passing)
+endif()
 
 # --- Python Bindings ---
 
