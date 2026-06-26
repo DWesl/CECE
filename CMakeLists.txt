@@ -684,15 +684,24 @@ gtest_discover_tests(test_megan3)
 gtest_discover_tests(test_cece_clock_properties)
 gtest_discover_tests(test_cece_clock_run_loop)
 gtest_discover_tests(test_bdsnp)
-gtest_discover_tests(test_tide_cpp)
+gtest_discover_tests(test_tide_cpp PROPERTIES ENVIRONMENT "FI_PROVIDER=tcp;I_MPI_FABRICS=shm")
 gtest_discover_tests(test_tide_c_parity)
 
 if(ESMF_FOUND)
-  gtest_discover_tests(test_driver_config_validation)
-  gtest_discover_tests(test_cece_cap)
-  gtest_discover_tests(test_diagnostics)
-  gtest_discover_tests(test_field_creation)
-  gtest_discover_tests(test_field_pointer_passing)
+  gtest_discover_tests(
+    test_driver_config_validation
+    PROPERTIES ENVIRONMENT "FI_PROVIDER=tcp;I_MPI_FABRICS=shm"
+  )
+  gtest_discover_tests(test_cece_cap PROPERTIES ENVIRONMENT "FI_PROVIDER=tcp;I_MPI_FABRICS=shm")
+  gtest_discover_tests(test_diagnostics PROPERTIES ENVIRONMENT "FI_PROVIDER=tcp;I_MPI_FABRICS=shm")
+  gtest_discover_tests(
+    test_field_creation
+    PROPERTIES ENVIRONMENT "FI_PROVIDER=tcp;I_MPI_FABRICS=shm"
+  )
+  gtest_discover_tests(
+    test_field_pointer_passing
+    PROPERTIES ENVIRONMENT "FI_PROVIDER=tcp;I_MPI_FABRICS=shm"
+  )
 endif()
 
 # --- Python Bindings ---
