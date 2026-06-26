@@ -30,6 +30,23 @@ if(POLICY CMP0074)
   cmake_policy(SET CMP0074 NEW)
 endif()
 
+# Discover and append standard HPC/Spack-Stack NetCDF environment variables to CMAKE_PREFIX_PATH
+foreach(
+  env_var
+  NetCDF_ROOT
+  NETCDF_ROOT
+  NETCDF_DIR
+  NetCDF_DIR
+  netCDF_ROOT
+  netcdf_ROOT
+  NetCDF_C_ROOT
+  NETCDF_C_ROOT
+)
+  if(DEFINED ENV{${env_var}})
+    list(APPEND CMAKE_PREFIX_PATH "$ENV{${env_var}}")
+  endif()
+endforeach()
+
 # --- Dependencies ---
 
 include(FetchContent)
