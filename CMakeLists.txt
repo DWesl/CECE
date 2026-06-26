@@ -146,10 +146,65 @@ else()
   message(STATUS "ESMF/NUOPC support is disabled (ENABLE_ESMF is OFF by default)")
 endif()
 
-# Find standard NetCDF using CONFIG mode
-find_package(netCDF CONFIG REQUIRED)
-if(netCDF_FOUND AND NOT netCDF_INCLUDE_DIRS)
-  set(netCDF_INCLUDE_DIRS "${netCDF_INCLUDE_DIR}")
+# Find standard NetCDF: try CONFIG mode first, fallback to standard library discovery
+find_package(netCDF CONFIG QUIET)
+
+if(NOT netCDF_FOUND)
+  message(STATUS "NetCDF Config file not found. Falling back to standard library discovery...")
+
+  find_path(
+    netCDF_INCLUDE_DIR
+    NAMES netcdf.h
+    PATHS
+      ${NetCDF_ROOT}
+      $ENV{NetCDF_ROOT}
+      $ENV{NETCDF_ROOT}
+      $ENV{NETCDF_DIR}
+      $ENV{NetCDF_DIR}
+      $ENV{NETCDF_C_ROOT}
+      $ENV{NetCDF_C_ROOT}
+    PATH_SUFFIXES include
+  )
+  find_library(
+    netCDF_LIBRARY
+    NAMES netcdf
+    PATHS
+      ${NetCDF_ROOT}
+      $ENV{NetCDF_ROOT}
+      $ENV{NETCDF_ROOT}
+      $ENV{NETCDF_DIR}
+      $ENV{NetCDF_DIR}
+      $ENV{NETCDF_C_ROOT}
+      $ENV{NetCDF_C_ROOT}
+    PATH_SUFFIXES lib lib64
+  )
+
+  include(FindPackageHandleStandardArgs)
+  find_package_handle_standard_args(netCDF DEFAULT_MSG netCDF_LIBRARY netCDF_INCLUDE_DIR)
+
+  if(netCDF_FOUND)
+    set(netCDF_INCLUDE_DIRS "${netCDF_INCLUDE_DIR}")
+    set(netCDF_LIBRARIES "${netCDF_LIBRARY}")
+
+    if(NOT TARGET netCDF::netcdf)
+      add_library(netCDF::netcdf UNKNOWN IMPORTED)
+      set_target_properties(
+        netCDF::netcdf
+        PROPERTIES
+          IMPORTED_LOCATION "${netCDF_LIBRARY}"
+          INTERFACE_INCLUDE_DIRECTORIES "${netCDF_INCLUDE_DIR}"
+      )
+    endif()
+  else()
+    message(
+      FATAL_ERROR
+      "Could not find NetCDF library or headers. Please set NetCDF_ROOT or NETCDF_ROOT."
+    )
+  endif()
+else()
+  if(NOT netCDF_INCLUDE_DIRS)
+    set(netCDF_INCLUDE_DIRS "${netCDF_INCLUDE_DIR}")
+  endif()
 endif()
 
 # Discovery PIO and NetCDF from ESMF if possible
