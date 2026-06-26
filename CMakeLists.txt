@@ -115,10 +115,19 @@ else()
   )
 endif()
 
-# ESMF and NUOPC are required dependencies.
-find_package(ESMF)
-message(STATUS "Found ESMF: ${ESMF_VERSION}")
-message(STATUS "ESMF include dirs: ${ESMF_INCLUDE_DIRS}")
+# ESMF and NUOPC support option (disabled by default)
+option(ENABLE_ESMF "Enable ESMF and NUOPC support" OFF)
+
+if(ENABLE_ESMF)
+  find_package(ESMF)
+  if(ESMF_FOUND)
+    message(STATUS "Found ESMF: ${ESMF_VERSION}")
+    message(STATUS "ESMF include dirs: ${ESMF_INCLUDE_DIRS}")
+  endif()
+else()
+  set(ESMF_FOUND FALSE)
+  message(STATUS "ESMF/NUOPC support is disabled (ENABLE_ESMF is OFF by default)")
+endif()
 
 # Find standard NetCDF using CONFIG mode
 find_package(netCDF CONFIG REQUIRED)
