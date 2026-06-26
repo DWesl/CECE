@@ -187,7 +187,7 @@ if(NOT netCDF_FOUND)
     set(netCDF_LIBRARIES "${netCDF_LIBRARY}")
 
     if(NOT TARGET netCDF::netcdf)
-      add_library(netCDF::netcdf UNKNOWN IMPORTED)
+      add_library(netCDF::netcdf UNKNOWN IMPORTED GLOBAL)
       set_target_properties(
         netCDF::netcdf
         PROPERTIES
