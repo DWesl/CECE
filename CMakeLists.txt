@@ -248,103 +248,99 @@ message(STATUS "Found MPI: ${MPI_CXX_VERSION}")
 find_package(OpenMP REQUIRED)
 message(STATUS "Found OpenMP: ${OpenMP_CXX_VERSION}")
 
-# --- CECE Library ---
+# --- CECE Core Library ---
 
 set(
-  CECE_SRCS
-  src/cece_clock.cpp
-  src/cece_config_parser.cpp
-  src/cece_compute.cpp
-  src/cece_stacking_engine.cpp
-  src/cece_physics_factory.cpp
-  src/cece_provenance.cpp
-  src/physics/cece_native_example.cpp
-  src/physics/cece_sea_salt.cpp
-  src/physics/cece_megan.cpp
-  src/physics/cece_dms.cpp
-  src/physics/cece_lightning.cpp
-  src/physics/cece_soil_nox.cpp
-  src/physics/cece_dust.cpp
-  src/physics/cece_fengsha.cpp
-  src/physics/cece_ginoux.cpp
-  src/physics/cece_k14.cpp
-  src/physics/cece_volcano.cpp
-  src/physics/cece_speciation_config.cpp
-  src/physics/cece_speciation_engine.cpp
-  src/physics/cece_canopy_model.cpp
-  src/physics/cece_emission_activity.cpp
-  src/physics/cece_megan3.cpp
-  src/physics/cece_bdsnp.cpp
-  src/cece_data_ingestor.cpp
-  src/cece_diagnostic_manager.cpp
-  src/cece_standalone_writer.cpp
-  src/cece_regridder_utils.cpp
-  src/cece_io.cpp
-  src/cece_core_writer_init.cpp
-  src/cece_core_driver_config.cpp
-  src/cece_core_advertise.cpp
-  src/cece_core_realize.cpp
-  src/cece_core_realize_wrapper.cpp
-  src/cece_core_initialize_p1.cpp
-  src/cece_core_initialize_p2.cpp
-  src/cece_core_field_helpers.cpp
-  src/cece_core_run.cpp
-  src/cece_core_finalize.cpp
-  src/cece_config_path.cpp
-  src/cece_c_api.cpp
-  src/cece_config_validator.cpp
-  src/cece_helm_graph.cpp
+  CECE_CORE_SRCS
+  src/core/cece_clock.cpp
+  src/core/cece_config_parser.cpp
+  src/core/cece_compute.cpp
+  src/core/cece_stacking_engine.cpp
+  src/core/cece_physics_factory.cpp
+  src/core/cece_provenance.cpp
+  src/core/physics/cece_native_example.cpp
+  src/core/physics/cece_sea_salt.cpp
+  src/core/physics/cece_megan.cpp
+  src/core/physics/cece_dms.cpp
+  src/core/physics/cece_lightning.cpp
+  src/core/physics/cece_soil_nox.cpp
+  src/core/physics/cece_dust.cpp
+  src/core/physics/cece_fengsha.cpp
+  src/core/physics/cece_ginoux.cpp
+  src/core/physics/cece_k14.cpp
+  src/core/physics/cece_volcano.cpp
+  src/core/physics/cece_speciation_config.cpp
+  src/core/physics/cece_speciation_engine.cpp
+  src/core/physics/cece_canopy_model.cpp
+  src/core/physics/cece_emission_activity.cpp
+  src/core/physics/cece_megan3.cpp
+  src/core/physics/cece_bdsnp.cpp
+  src/core/cece_data_ingestor.cpp
+  src/core/cece_diagnostic_manager.cpp
+  src/core/cece_io.cpp
+  src/core/cece_core_driver_config.cpp
+  src/core/cece_core_advertise.cpp
+  src/core/cece_core_realize.cpp
+  src/core/cece_core_realize_wrapper.cpp
+  src/core/cece_core_initialize_p1.cpp
+  src/core/cece_core_initialize_p2.cpp
+  src/core/cece_core_field_helpers.cpp
+  src/core/cece_core_run.cpp
+  src/core/cece_core_finalize.cpp
+  src/core/cece_config_path.cpp
+  src/core/cece_c_api.cpp
+  src/core/cece_config_validator.cpp
 )
 
 if(CECE_HAS_FORTRAN)
   list(
-    APPEND CECE_SRCS
-    src/physics/cece_fortran_bridge.cpp
-    src/physics/legacy_fortran.F90
-    src/physics/cece_sea_salt_fortran_bridge.cpp
-    src/physics/sea_salt_kernel.F90
-    src/physics/cece_megan_fortran_bridge.cpp
-    src/physics/megan_kernel.F90
-    src/physics/cece_dms_fortran_bridge.cpp
-    src/physics/dms_kernel.F90
-    src/physics/cece_lightning_fortran_bridge.cpp
-    src/physics/lightning_kernel.F90
-    src/physics/cece_soil_nox_fortran_bridge.cpp
-    src/physics/soil_nox_kernel.F90
-    src/physics/cece_dust_fortran_bridge.cpp
-    src/physics/dust_kernel.F90
-    src/physics/cece_fengsha_fortran_bridge.cpp
-    src/physics/fengsha_kernel.F90
-    src/physics/cece_ginoux_fortran_bridge.cpp
-    src/physics/ginoux_kernel.F90
-    src/physics/cece_k14_fortran_bridge.cpp
-    src/physics/k14_kernel.F90
-    src/physics/cece_volcano_fortran_bridge.cpp
-    src/physics/volcano_kernel.F90
-    src/physics/cece_megan3_fortran_bridge.cpp
-    src/physics/megan3_kernel.F90
-    src/physics/cece_bdsnp_fortran_bridge.cpp
-    src/physics/bdsnp_kernel.F90
-    src/cece_ingestor_bridge.cpp
+    APPEND CECE_CORE_SRCS
+    src/core/physics/cece_fortran_bridge.cpp
+    src/core/physics/legacy_fortran.F90
+    src/core/physics/cece_sea_salt_fortran_bridge.cpp
+    src/core/physics/sea_salt_kernel.F90
+    src/core/physics/cece_megan_fortran_bridge.cpp
+    src/core/physics/megan_kernel.F90
+    src/core/physics/cece_dms_fortran_bridge.cpp
+    src/core/physics/dms_kernel.F90
+    src/core/physics/cece_lightning_fortran_bridge.cpp
+    src/core/physics/lightning_kernel.F90
+    src/core/physics/cece_soil_nox_fortran_bridge.cpp
+    src/core/physics/soil_nox_kernel.F90
+    src/core/physics/cece_dust_fortran_bridge.cpp
+    src/core/physics/dust_kernel.F90
+    src/core/physics/cece_fengsha_fortran_bridge.cpp
+    src/core/physics/fengsha_kernel.F90
+    src/core/physics/cece_ginoux_fortran_bridge.cpp
+    src/core/physics/ginoux_kernel.F90
+    src/core/physics/cece_k14_fortran_bridge.cpp
+    src/core/physics/k14_kernel.F90
+    src/core/physics/cece_volcano_fortran_bridge.cpp
+    src/core/physics/volcano_kernel.F90
+    src/core/physics/cece_megan3_fortran_bridge.cpp
+    src/core/physics/megan3_kernel.F90
+    src/core/physics/cece_bdsnp_fortran_bridge.cpp
+    src/core/physics/bdsnp_kernel.F90
+    src/core/cece_ingestor_bridge.cpp
   )
 endif()
 
-add_library(cece SHARED ${CECE_SRCS})
+add_library(cece_core SHARED ${CECE_CORE_SRCS})
 
 if(CECE_HAS_FORTRAN)
   set_target_properties(
-    cece
+    cece_core
     PROPERTIES Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/fortran_modules/cece
   )
   target_include_directories(
-    cece
+    cece_core
     PUBLIC $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/fortran_modules/cece>
   )
-  target_compile_definitions(cece PRIVATE CECE_HAS_FORTRAN)
+  target_compile_definitions(cece_core PRIVATE CECE_HAS_FORTRAN)
 endif()
 
 target_include_directories(
-  cece
+  cece_core
   PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include>
@@ -352,37 +348,65 @@ target_include_directories(
 )
 
 # Suppress conflicting C++ MPI bindings pulled in via ESMF's ESMC.h -> mpi.h -> mpicxx.h
-target_compile_definitions(cece PUBLIC MPICH_SKIP_MPICXX OMPI_SKIP_MPICXX)
+target_compile_definitions(cece_core PUBLIC MPICH_SKIP_MPICXX OMPI_SKIP_MPICXX)
 
 if(ESMF_FOUND)
-  target_link_libraries(cece PUBLIC Kokkos::kokkos ESMF::ESMF yaml-cpp)
+  target_link_libraries(cece_core PUBLIC Kokkos::kokkos ESMF::ESMF yaml-cpp)
 else()
-  target_link_libraries(cece PUBLIC Kokkos::kokkos yaml-cpp)
+  target_link_libraries(cece_core PUBLIC Kokkos::kokkos yaml-cpp)
 endif()
 
-target_link_libraries(
-  cece
-  PUBLIC amio_core HELM::SPAN blend axis HELM::DAGR HELM::HALO HELM::TICK
-)
+target_link_libraries(cece_core PUBLIC HELM::LOGS)
 
 if(netCDF_FOUND)
-  target_link_libraries(cece PUBLIC netCDF::netcdf)
-  target_include_directories(cece PUBLIC ${netCDF_INCLUDE_DIRS})
+  target_link_libraries(cece_core PUBLIC netCDF::netcdf)
+  target_include_directories(cece_core PUBLIC ${netCDF_INCLUDE_DIRS})
 endif()
 
 if(CECE_HAS_FORTRAN AND NetCDFF_ROOT)
-  target_include_directories(cece PRIVATE "${NetCDFF_ROOT}/include")
+  target_include_directories(cece_core PRIVATE "${NetCDFF_ROOT}/include")
 endif()
 
 if(MPI_FOUND)
-  target_link_libraries(cece PUBLIC MPI::MPI_CXX)
+  target_link_libraries(cece_core PUBLIC MPI::MPI_CXX)
 endif()
 
 # Suppress conflicting C++ MPI bindings pulled in via ESMF's ESMC.h -> mpi.h -> mpicxx.h
-target_compile_definitions(cece PUBLIC MPICH_SKIP_MPICXX OMPI_SKIP_MPICXX)
+target_compile_definitions(cece_core PUBLIC MPICH_SKIP_MPICXX OMPI_SKIP_MPICXX)
+
+# --- cece_driver Library ---
+
+add_library(
+  cece_driver
+  SHARED
+  src/driver/cece_helm_graph.cpp
+  src/driver/cece_regridder_utils.cpp
+  src/driver/cece_standalone_writer.cpp
+  src/driver/cece_core_writer_init.cpp
+  src/driver/cece_driver_facade.cpp
+)
+
+target_include_directories(
+  cece_driver
+  PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include> $<INSTALL_INTERFACE:include>
+)
+
+target_link_libraries(
+  cece_driver
+  PUBLIC cece_core amio_core HELM::SPAN blend axis HELM::DAGR HELM::HALO HELM::TICK
+)
+
+# --- Backward-Compatibility target aliases ---
+add_library(cece INTERFACE)
+target_link_libraries(cece INTERFACE cece_core cece_driver)
 
 # --- Install Rules ---
-install(TARGETS cece LIBRARY DESTINATION lib ARCHIVE DESTINATION lib RUNTIME DESTINATION bin)
+install(
+  TARGETS cece_core cece_driver
+  LIBRARY DESTINATION lib
+  ARCHIVE DESTINATION lib
+  RUNTIME DESTINATION bin
+)
 install(DIRECTORY include/cece DESTINATION include)
 
 # --- Tests ---
@@ -442,6 +466,9 @@ if(CECE_HAS_FORTRAN AND ESMF_FOUND)
   add_library(test_helpers STATIC tests/test_helpers.F90)
   target_include_directories(test_helpers PUBLIC ${ESMF_INCLUDE_DIRS})
   target_link_libraries(test_helpers PUBLIC ESMF::ESMF)
+  if(MPI_FOUND)
+    target_link_libraries(test_helpers PUBLIC MPI::MPI_CXX)
+  endif()
 endif()
 
 add_executable(hemco_comparison_driver tests/hemco_comparison_driver.cpp)
