@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 
 #include <Kokkos_Core.hpp>
+#include <filesystem>
 
 #include "cece/cece_logger.hpp"
 
@@ -17,8 +18,11 @@ TEST(CCPPLinkTest, CompileIsolation) {
     void* data_ptr = nullptr;
     int rc = -1;
 
-    // Set config file path to a valid test configuration
+    // Set config file path to a valid test configuration, checking relative paths
     std::string config_file = "cece_control_mock.yaml";
+    if (!std::filesystem::exists(config_file)) {
+        config_file = "../cece_control_mock.yaml";
+    }
     cece_set_config_file_path(config_file.c_str(), static_cast<int>(config_file.length()));
 
     // Phase 1 Initialization
