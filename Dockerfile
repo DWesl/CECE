@@ -86,7 +86,7 @@ RUN git clone --depth 1 https://github.com/kokkos/kokkos-kernels.git /tmp/kokkos
     && rm -rf /tmp/kokkos-kernels
 
 # 6. Clone and install ESMF (with NUOPC support)
-RUN git clone --depth 1 -b v8.6.0 https://github.com/esmf-org/esmf.git /tmp/esmf \
+RUN git clone --depth 1 -b v8.9.1 https://github.com/esmf-org/esmf.git /tmp/esmf \
     && cd /tmp/esmf \
     && export ESMF_DIR=/tmp/esmf \
     && export ESMF_COMPILER=gfortran \
