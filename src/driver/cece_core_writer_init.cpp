@@ -6,6 +6,12 @@
 #include <iostream>
 
 #include "cece/cece_internal.hpp"
+#include "cece/cece_standalone_writer.hpp"
+
+namespace cece {
+class CeceStandaloneWriter;
+}
+extern std::unique_ptr<cece::CeceStandaloneWriter> g_standalone_writer;
 
 extern "C" {
 
@@ -47,11 +53,8 @@ void cece_core_writer_initialize_with_coords(void* data_ptr, int nx, int ny, int
     try {
         auto* internal_data = static_cast<cece::CeceInternalData*>(data_ptr);
 
-        if (!internal_data->standalone_writer) {
-            std::cerr << "ERROR: cece_core_writer_initialize_with_coords - standalone_writer not "
-                         "initialized\n";
-            *rc = -1;
-            return;
+        if (!g_standalone_writer) {
+            g_standalone_writer = std::make_unique<cece::CeceStandaloneWriter>(internal_data->config.output_config);
         }
 
         // Convert C string to std::string
@@ -67,7 +70,7 @@ void cece_core_writer_initialize_with_coords(void* data_ptr, int nx, int ny, int
         std::cout << "INFO: Latitude range: " << lat_vec[0] << " to " << lat_vec[ny - 1] << "\n";
 
         // Initialize the writer with coordinates
-        int writer_rc = internal_data->standalone_writer->InitializeWithCoords(start_time, nx, ny, nz, lon_vec, lat_vec);
+        int writer_rc = g_standalone_writer->InitializeWithCoords(start_time, nx, ny, nz, lon_vec, lat_vec);
 
         if (writer_rc != 0) {
             std::cerr << "ERROR: cece_core_writer_initialize_with_coords - writer initialization "
@@ -115,10 +118,8 @@ void cece_core_writer_initialize(void* data_ptr, int nx, int ny, int nz, const c
     try {
         auto* internal_data = static_cast<cece::CeceInternalData*>(data_ptr);
 
-        if (!internal_data->standalone_writer) {
-            std::cerr << "ERROR: cece_core_writer_initialize - standalone_writer not initialized\n";
-            *rc = -1;
-            return;
+        if (!g_standalone_writer) {
+            g_standalone_writer = std::make_unique<cece::CeceStandaloneWriter>(internal_data->config.output_config);
         }
 
         // Convert C string to std::string
@@ -127,7 +128,7 @@ void cece_core_writer_initialize(void* data_ptr, int nx, int ny, int nz, const c
         std::cout << "INFO: Initializing standalone writer with dimensions: " << nx << "x" << ny << "x" << nz << " start_time=" << start_time << "\n";
 
         // Initialize the writer
-        int writer_rc = internal_data->standalone_writer->Initialize(start_time, nx, ny, nz);
+        int writer_rc = g_standalone_writer->Initialize(start_time, nx, ny, nz);
 
         if (writer_rc != 0) {
             std::cerr << "ERROR: cece_core_writer_initialize - writer initialization failed\n";

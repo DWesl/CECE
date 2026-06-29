@@ -1,12 +1,12 @@
 # Dockerfile
-# CECE Development and Verification Environment (Independent of JCSDA/ESMF)
-# Based on Ubuntu 24.04 with GCC-13, OpenMPI, NetCDF-C, Kokkos 5.1.1, RapidCheck, and KokkosKernels
+# CECE Development and Verification Environment (with ESMF & NUOPC)
+# Based on Ubuntu 24.04 with GCC-13, OpenMPI, NetCDF-C, NetCDF-Fortran, ESMF, Kokkos 5.1.1, RapidCheck, and KokkosKernels
 FROM ubuntu:24.04
 
 # Prevent interactive prompts during installation
 ENV DEBIAN_FRONTEND=noninteractive
 
-# 1. Install Core HPC, C++20 Toolchain, and NetCDF-C
+# 1. Install Core HPC, C++20 Toolchain, and NetCDF-C/Fortran
 RUN apt-get update && apt-get install -y \
     build-essential \
     g++-13 \
@@ -20,6 +20,7 @@ RUN apt-get update && apt-get install -y \
     openmpi-bin \
     libopenmpi-dev \
     libnetcdf-mpi-dev \
+    libnetcdff-dev \
     libblosc-dev \
     libbz2-dev \
     libxml2-dev \
@@ -84,7 +85,21 @@ RUN git clone --depth 1 https://github.com/kokkos/kokkos-kernels.git /tmp/kokkos
     && cmake --install build \
     && rm -rf /tmp/kokkos-kernels
 
+# 6. Clone and install ESMF (with NUOPC support)
+RUN git clone --depth 1 -b v8.6.0 https://github.com/esmf-org/esmf.git /tmp/esmf \
+    && cd /tmp/esmf \
+    && export ESMF_DIR=/tmp/esmf \
+    && export ESMF_COMPILER=gfortran \
+    && export ESMF_COMM=openmpi \
+    && export ESMF_NETCDF=nc-config \
+    && export ESMF_NETCDF_LIBS="-lnetcdf -lnetcdff" \
+    && export ESMF_INSTALL_PREFIX=/usr/local \
+    && make -j$(nproc) \
+    && make install \
+    && rm -rf /tmp/esmf
+
 # Set standard environment variables
+ENV ESMFMKFILE=/usr/local/lib/libO/Linux.gfortran.32.openmpi.default/esmf.mk
 ENV OMPI_ALLOW_RUN_AS_ROOT=1
 ENV OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=1
 

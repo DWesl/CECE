@@ -36,7 +36,6 @@
 #include "cece/cece_internal.hpp"
 #include "cece/cece_physics_factory.hpp"
 #include "cece/cece_stacking_engine.hpp"
-#include "cece/cece_standalone_writer.hpp"
 #include "cece/physics_scheme.hpp"
 
 extern "C" {
@@ -299,28 +298,10 @@ void cece_core_initialize_p1(void** data_ptr_ptr, int* rc) {
         return;
     }
 
-    // 7. Initialize CeceStandaloneWriter if output config is enabled (Req 11.1, 11.4)
+    // 7. Setup standalone mode flag if output config is enabled (Req 11.1, 11.4)
     if (config.output_config.enabled) {
-        std::cout << "INFO: Initializing CeceStandaloneWriter for standalone output" << std::endl;
-        try {
-            internal_data->standalone_writer = std::make_unique<cece::CeceStandaloneWriter>(config.output_config);
-            internal_data->standalone_mode = true;
-            std::cout << "INFO: CeceStandaloneWriter initialized successfully" << std::endl;
-            std::cout << "INFO: Output directory: " << config.output_config.directory << std::endl;
-            std::cout << "INFO: Output frequency: every " << config.output_config.frequency_steps << " time steps" << std::endl;
-        } catch (const std::exception& e) {
-            std::cerr << "ERROR: Failed to initialize CeceStandaloneWriter: " << e.what() << std::endl;
-            if (rc != nullptr) {
-                *rc = -1;
-            }
-            delete internal_data;
-            if (kokkos_initialized_here && Kokkos::is_initialized()) {
-                Kokkos::finalize();
-            }
-            return;
-        }
+        internal_data->standalone_mode = true;
     } else {
-        std::cout << "INFO: No output configuration found - standalone writer disabled" << std::endl;
         internal_data->standalone_mode = false;
     }
 

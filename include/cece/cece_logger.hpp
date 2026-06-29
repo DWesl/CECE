@@ -1,16 +1,15 @@
 /**
  * @file cece_logger.hpp
- * @brief Logging system for CECE with configurable log levels
+ * @brief Logging system for CECE with configurable log levels backed by HELM::LOGS
  */
 
 #ifndef CECE_LOGGER_HPP
 #define CECE_LOGGER_HPP
 
-#include <ctime>
-#include <iomanip>
+#include <mpi.h>
+
 #include <iostream>
-#include <mutex>
-#include <sstream>
+#include <logs/logs.hpp>
 #include <string>
 
 namespace cece {
@@ -28,7 +27,7 @@ enum class LogLevel {
 
 /**
  * @class CeceLogger
- * @brief Thread-safe singleton logger for CECE with configurable log levels
+ * @brief Thread-safe singleton logger for CECE backed by helm/libs/logs
  *
  * Usage:
  * ```cpp
@@ -56,8 +55,15 @@ class CeceLogger {
      * @param level The log level to set
      */
     void SetLogLevel(LogLevel level) {
-        std::lock_guard<std::mutex> lock(mutex_);
-        log_level_ = level;
+        if (level == LogLevel::ERROR) {
+            logger_.set_threshold(logs::Severity_Level::ERROR);
+        } else if (level == LogLevel::WARNING) {
+            logger_.set_threshold(logs::Severity_Level::WARNING);
+        } else if (level == LogLevel::INFO) {
+            logger_.set_threshold(logs::Severity_Level::INFO);
+        } else if (level == LogLevel::DEBUG) {
+            logger_.set_threshold(logs::Severity_Level::DEBUG);
+        }
     }
 
     /**
@@ -65,50 +71,82 @@ class CeceLogger {
      * @return The current log level
      */
     LogLevel GetLogLevel() const {
-        return log_level_;
+        auto thresh = logger_.threshold();
+        if (thresh == logs::Severity_Level::ERROR || thresh == logs::Severity_Level::FATAL) {
+            return LogLevel::ERROR;
+        } else if (thresh == logs::Severity_Level::WARNING) {
+            return LogLevel::WARNING;
+        } else if (thresh == logs::Severity_Level::INFO) {
+            return LogLevel::INFO;
+        } else {
+            return LogLevel::DEBUG;
+        }
+    }
+
+    /**
+     * @brief Configure the MPI communicator for the underlying HELM LOGS logger
+     */
+    void ConfigureCommunicator(MPI_Comm comm) {
+        logger_.configure_communicator(comm);
     }
 
     /**
      * @brief Log an error message
      */
     void LogError(const std::string& message, const std::string& file = "", int line = 0) {
-        if (log_level_ >= LogLevel::ERROR) {
-            LogMessage("ERROR", message, file, line, std::cerr);
+        EnsureCommunicatorConfigured();
+        logs::Submit_Options opts;
+        if (!file.empty() && line > 0) {
+            opts.location = logs::Source_Location{file, line, ""};
         }
+        logger_.log(logs::Severity_Level::ERROR, message, opts);
     }
 
     /**
      * @brief Log a warning message
      */
     void LogWarning(const std::string& message, const std::string& file = "", int line = 0) {
-        if (log_level_ >= LogLevel::WARNING) {
-            LogMessage("WARNING", message, file, line, std::cerr);
+        EnsureCommunicatorConfigured();
+        logs::Submit_Options opts;
+        if (!file.empty() && line > 0) {
+            opts.location = logs::Source_Location{file, line, ""};
         }
+        logger_.log(logs::Severity_Level::WARNING, message, opts);
     }
 
     /**
      * @brief Log an info message
      */
     void LogInfo(const std::string& message, const std::string& file = "", int line = 0) {
-        if (log_level_ >= LogLevel::INFO) {
-            LogMessage("INFO", message, file, line, std::cout);
+        EnsureCommunicatorConfigured();
+        logs::Submit_Options opts;
+        if (!file.empty() && line > 0) {
+            opts.location = logs::Source_Location{file, line, ""};
         }
+        logger_.log(logs::Severity_Level::INFO, message, opts);
     }
 
     /**
      * @brief Log a debug message
      */
     void LogDebug(const std::string& message, const std::string& file = "", int line = 0) {
-        if (log_level_ >= LogLevel::DEBUG) {
-            LogMessage("DEBUG", message, file, line, std::cout);
+        EnsureCommunicatorConfigured();
+        logs::Submit_Options opts;
+        if (!file.empty() && line > 0) {
+            opts.location = logs::Source_Location{file, line, ""};
         }
+        logger_.log(logs::Severity_Level::DEBUG, message, opts);
     }
 
    private:
-    LogLevel log_level_ = LogLevel::INFO;
-    std::mutex mutex_;
+    logs::Logger logger_;
 
-    CeceLogger() = default;
+    CeceLogger() {
+        // By default, add a stdout sink so user-facing logs are visible in typical stdout
+        logger_.add_sink(logs::Sink(std::cout));
+        // Check if MPI is already initialized and auto-configure if so
+        EnsureCommunicatorConfigured();
+    }
     ~CeceLogger() = default;
 
     // Delete copy and move constructors
@@ -117,33 +155,14 @@ class CeceLogger {
     CeceLogger(CeceLogger&&) = delete;
     CeceLogger& operator=(CeceLogger&&) = delete;
 
-    /**
-     * @brief Internal method to log a message with formatting.
-     * Uses localtime_r for thread safety and a mutex to prevent interleaved output.
-     */
-    void LogMessage(const std::string& level, const std::string& message, const std::string& file, int line, std::ostream& stream) {
-        // Get current time using thread-safe localtime_r
-        auto now = std::time(nullptr);
-        struct tm tm_buf = {};
-        localtime_r(&now, &tm_buf);
-
-        // Build the full message in a local buffer to avoid interleaving
-        std::ostringstream oss;
-        // clang-format off
-        oss << "[" << std::put_time(&tm_buf, "%Y-%m-%d %H:%M:%S") << "] "
-            << "[" << level << "] ";
-        // clang-format on
-
-        if (!file.empty() && line > 0) {
-            oss << "[" << file << ":" << line << "] ";
+    void EnsureCommunicatorConfigured() {
+        if (logger_.rank() == -1) {
+            int mpi_initialized = 0;
+            MPI_Initialized(&mpi_initialized);
+            if (mpi_initialized) {
+                logger_.configure_communicator(MPI_COMM_WORLD);
+            }
         }
-
-        oss << message << "\n";
-
-        // Write atomically under lock
-        std::lock_guard<std::mutex> lock(mutex_);
-        stream << oss.str();
-        stream.flush();
     }
 };
 
@@ -151,11 +170,8 @@ class CeceLogger {
 
 // Convenience macros for logging
 #define CECE_LOG_ERROR(msg) cece::CeceLogger::GetInstance().LogError(msg, __FILE__, __LINE__)
-
 #define CECE_LOG_WARNING(msg) cece::CeceLogger::GetInstance().LogWarning(msg, __FILE__, __LINE__)
-
 #define CECE_LOG_INFO(msg) cece::CeceLogger::GetInstance().LogInfo(msg, __FILE__, __LINE__)
-
 #define CECE_LOG_DEBUG(msg) cece::CeceLogger::GetInstance().LogDebug(msg, __FILE__, __LINE__)
 
 #endif  // CECE_LOGGER_HPP

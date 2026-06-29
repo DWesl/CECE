@@ -64,17 +64,6 @@ void cece_core_finalize(void* data_ptr, int* rc) {
         std::cerr << "WARNING: Data ingestor cache clear threw: " << e.what() << "\n";
     }
 
-    // 1. Finalize standalone writer if it was initialized (Req 11.1, 11.8)
-    if (internal_data->standalone_writer) {
-        std::cout << "INFO: Finalizing CeceStandaloneWriter\n";
-        try {
-            internal_data->standalone_writer->Finalize();
-            std::cout << "INFO: CeceStandaloneWriter finalized\n";
-        } catch (const std::exception& e) {
-            std::cerr << "WARNING: CeceStandaloneWriter Finalize threw: " << e.what() << "\n";
-        }
-    }
-
     // 2. Finalize all physics schemes (Req 4.15 - release Kokkos views held by schemes)
     std::cout << "INFO: Finalizing " << internal_data->active_schemes.size() << " physics schemes\n";
     for (auto& scheme : internal_data->active_schemes) {

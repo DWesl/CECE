@@ -21,37 +21,34 @@ if(TARGET MPI::MPI_Fortran)
   target_link_libraries(iso8601_utils PUBLIC MPI::MPI_Fortran)
 endif()
 
-# -----------------------------------------------------------------------
-# NUOPC Application (MPI+OpenMP support) Full NUOPC_Driver architecture for
-# production MPI+OpenMP hybrid execution Architecture: mainApp.F90 - Entry point
-# (creates NUOPC_Driver) driver.F90 - NUOPC_Driver component (orchestrates CECE)
-# cece_cap.F90 - CECE component cap (in src/, implements CECE physics)
-# -----------------------------------------------------------------------
-add_executable(cece_nuopc_app mainApp.F90 driver.F90)
+# Disable building the deprecated standalone NUOPC app as it has been replaced by the C++ driver
+if(FALSE)
+  add_executable(cece_nuopc_app mainApp.F90 driver.F90 cece_cap_mock.F90)
 
-set_target_properties(cece_nuopc_app PROPERTIES LINKER_LANGUAGE Fortran)
+  set_target_properties(cece_nuopc_app PROPERTIES LINKER_LANGUAGE Fortran)
 
-target_include_directories(cece_nuopc_app PRIVATE ${ESMF_INCLUDE_DIRS})
+  target_include_directories(cece_nuopc_app PRIVATE ${ESMF_INCLUDE_DIRS})
 
-target_link_libraries(cece_nuopc_app PRIVATE cece ESMF::ESMF yaml-cpp ${ESMF_LIBRARIES})
+  target_link_libraries(cece_nuopc_app PRIVATE cece ESMF::ESMF yaml-cpp ${ESMF_LIBRARIES})
 
-if(TARGET MPI::MPI_Fortran)
-  target_link_libraries(cece_nuopc_app PRIVATE MPI::MPI_Fortran)
-endif()
+  if(TARGET MPI::MPI_Fortran)
+    target_link_libraries(cece_nuopc_app PRIVATE MPI::MPI_Fortran)
+  endif()
 
-# Allow undefined symbols from shared library (will be resolved at runtime)
-if(APPLE)
-  target_link_options(cece_nuopc_app PRIVATE "LINKER:-undefined,dynamic_lookup")
-else()
-  target_link_options(cece_nuopc_app PRIVATE "LINKER:--allow-shlib-undefined")
-endif()
+  # Allow undefined symbols from shared library (will be resolved at runtime)
+  if(APPLE)
+    target_link_options(cece_nuopc_app PRIVATE "LINKER:-undefined,dynamic_lookup")
+  else()
+    target_link_options(cece_nuopc_app PRIVATE "LINKER:--allow-shlib-undefined")
+  endif()
 
-# Ensure Fortran modules from cece are available before building the app
-if(TARGET cece)
-  add_dependencies(cece_nuopc_app cece)
+  # Ensure Fortran modules from cece are available before building the app
+  if(TARGET cece)
+    add_dependencies(cece_nuopc_app cece)
+  endif()
 endif()
 
 # -----------------------------------------------------------------------
 # Installation
 # -----------------------------------------------------------------------
-install(TARGETS cece_nuopc_app DESTINATION bin)
+# install(TARGETS cece_nuopc_app DESTINATION bin)

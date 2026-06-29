@@ -370,3 +370,43 @@ void CeceStandaloneWriter::Finalize() {
 }
 
 }  // namespace cece
+
+extern "C" {
+
+#include <Kokkos_Core.hpp>
+
+#include "cece/cece_internal.hpp"
+
+std::unique_ptr<cece::CeceStandaloneWriter> g_standalone_writer;
+
+void cece_core_write_step(void* data_ptr, double time_seconds, int step_index, int* rc) {
+    if (rc != nullptr) *rc = 0;
+
+    if (data_ptr == nullptr) {
+        std::cerr << "ERROR: cece_core_write_step - data_ptr is null" << std::endl;
+        if (rc != nullptr) *rc = -1;
+        return;
+    }
+
+    auto* d = static_cast<cece::CeceInternalData*>(data_ptr);
+
+    if (!d->standalone_mode || !g_standalone_writer) return;
+
+    const int freq = d->config.output_config.frequency_steps;
+    if (step_index % freq != 0) return;
+
+    // Critical: ensure all computations complete before writing
+    Kokkos::fence();
+
+    int w = g_standalone_writer->WriteTimeStep(d->export_state.fields, time_seconds, step_index);
+
+    // Critical: sync to ensure all I/O completes before returning
+    Kokkos::fence();
+
+    if (w != 0) {
+        std::cerr << "WARNING: cece_core_write_step - WriteTimeStep returned " << w << std::endl;
+        if (rc != nullptr) *rc = w;
+    }
+}
+
+}  // extern "C"

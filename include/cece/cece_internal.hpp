@@ -12,7 +12,6 @@
 #include "cece/cece_diagnostics.hpp"
 #include "cece/cece_provenance.hpp"
 #include "cece/cece_stacking_engine.hpp"
-#include "cece/cece_standalone_writer.hpp"
 #include "cece/cece_state.hpp"
 #include "cece/physics_scheme.hpp"
 
@@ -34,7 +33,6 @@ struct CeceInternalData {
     bool kokkos_initialized_here = false;                                                     ///< Flag to track if this component initialized Kokkos.
     bool advertised = false;                                                                  ///< Flag to track if the Advertise phase has run.
     bool standalone_mode = false;                                                             ///< True when running via the single-model driver.
-    std::unique_ptr<CeceStandaloneWriter> standalone_writer;                                  ///< Output writer for standalone mode.
     int step_count = 0;                ///< Current time step counter for output frequency gating.
     std::string start_time_iso8601;    ///< Start time in ISO 8601 format for output.
     std::unique_ptr<CeceClock> clock;  ///< Clock for per-component refresh interval scheduling.
