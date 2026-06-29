@@ -497,6 +497,10 @@ target_link_libraries(test_suite_idempotence PRIVATE cece GTest::gtest_main)
 add_executable(test_repro_failure tests/repro_failure.cpp)
 target_link_libraries(test_repro_failure PRIVATE cece GTest::gtest_main)
 
+# CCPP Readiness and Core Link Isolation Test
+add_executable(test_ccpp_readiness tests/test_ccpp_readiness.cpp)
+target_link_libraries(test_ccpp_readiness PRIVATE cece_core GTest::gtest_main)
+
 # Unit tests for field creation (Requirement R4) FENGSHA Dust Scheme Property
 # Tests
 add_executable(test_fengsha_properties tests/test_fengsha_properties.cpp)
@@ -703,6 +707,7 @@ gtest_discover_tests(test_kokkos_configuration)
 gtest_discover_tests(test_properties)
 gtest_discover_tests(test_suite_idempotence)
 gtest_discover_tests(test_repro_failure)
+gtest_discover_tests(test_ccpp_readiness)
 gtest_discover_tests(test_fengsha_properties)
 gtest_discover_tests(test_ginoux_properties)
 gtest_discover_tests(test_k14_properties)
