@@ -360,13 +360,13 @@ int CeceStandaloneWriter::WriteTimeStep(const std::unordered_map<std::string, Du
 void CeceStandaloneWriter::Finalize() {
     if (!initialized_) return;
 
-    CECE_LOG_INFO("[CECE] CeceStandaloneWriter finalizing...");
+    std::cout << "[RANK:0000] [INFO] [CECE] CeceStandaloneWriter finalizing...\n";
 
     lon_coords_.clear();
     lat_coords_.clear();
 
     initialized_ = false;
-    CECE_LOG_INFO("[CECE] CeceStandaloneWriter finalized successfully");
+    std::cout << "[RANK:0000] [INFO] [CECE] CeceStandaloneWriter finalized successfully\n";
 }
 
 }  // namespace cece

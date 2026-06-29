@@ -10,7 +10,7 @@
 #include <stdexcept>
 #include <tick/duration.hpp>
 
-void CompileHelmGraph(const std::string& config_file, std::unique_ptr<dagr::GraphOrchestrator>& dagr, cece::io::CeceIO& cece_io) {
+void CompileHelmGraph(const std::string& config_file, std::unique_ptr<dagr::GraphOrchestrator>& dagr, cece::io::CeceIO& cece_io, MPI_Comm comm_c) {
     std::ifstream f(config_file);
     if (!f.good()) {
         throw std::runtime_error("File not found: " + config_file);
@@ -39,8 +39,12 @@ void CompileHelmGraph(const std::string& config_file, std::unique_ptr<dagr::Grap
     pc.task_names.push_back("regrid_and_scale");
 
     // Instantiating GraphOrchestrator requires world communicator.
-    // Wrap MPI_COMM_WORLD in halo::Communicator (which uses MPI)
-    halo::Communicator world(MPI_COMM_WORLD);
+    // Wrap custom MPI communicator in halo::Communicator safely (duplicating to prevent RAII destruction of ESMF's handle)
+    MPI_Comm comm_to_wrap = comm_c;
+    if (comm_c != MPI_COMM_NULL && comm_c != MPI_COMM_WORLD && comm_c != MPI_COMM_SELF) {
+        MPI_Comm_dup(comm_c, &comm_to_wrap);
+    }
+    halo::Communicator world(comm_to_wrap);
 
     // Allocate the GraphOrchestrator
     dagr = std::make_unique<dagr::GraphOrchestrator>(std::move(pc), std::move(world));

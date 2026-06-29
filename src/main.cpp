@@ -30,6 +30,11 @@ void cece_core_write_step(void* data_ptr, double time_seconds, int step_index, i
 void cece_core_set_export_field(void* data_ptr, const char* name, int name_len, const double* field_data, int nx, int ny, int nz, int* rc);
 }
 
+extern "C" {
+void cece_driver_create(const char* yaml_path, int path_len, int nx, int ny, int nz, const double* lon_coords, const double* lat_coords,
+                        int mpi_comm_f, void** driver_ptr_out, int* rc);
+}
+
 int main(int argc, char* argv[]) {
     // 1. Initialize MPI with thread support
     int provided = 0;
@@ -180,7 +185,8 @@ int main(int argc, char* argv[]) {
 
         // 5. Initialize the cece_driver orchestrator facade
         void* cece_driver_data = nullptr;
-        cece_driver_create(config_file.c_str(), static_cast<int>(config_file.length()), nx, ny, nz, file_lons.data(), file_lats.data(),
+        int mpi_comm_f = MPI_Comm_c2f(MPI_COMM_WORLD);
+        cece_driver_create(config_file.c_str(), static_cast<int>(config_file.length()), nx, ny, nz, file_lons.data(), file_lats.data(), mpi_comm_f,
                            &cece_driver_data, &rc);
 
         // Standalone Writer: Initialize output writing if configured

@@ -5,10 +5,8 @@
 #include <dagr/dagr.hpp>
 #include <halo/environment.hpp>
 
+#include "cece/cece_helm_graph.hpp"
 #include "cece/cece_io.hpp"
-
-// Forward declare CompileHelmGraph for testing
-void CompileHelmGraph(const std::string& config_file, std::unique_ptr<dagr::GraphOrchestrator>& dagr, cece::io::CeceIO& cece_io);
 
 // Forward declare CECE C-Linkage APIs
 extern "C" {

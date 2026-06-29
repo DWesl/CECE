@@ -569,7 +569,7 @@ target_link_libraries(test_tide_c_parity PRIVATE cece GTest::gtest_main)
 
 # Standalone NUOPC driver
 if(ESMF_FOUND)
-  add_subdirectory(standalone_nuopc)
+  add_subdirectory(src/driver/nuopc)
 endif()
 
 # Python script tests

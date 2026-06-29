@@ -16,6 +16,7 @@
 #include "cece/cece_helm_graph.hpp"
 #include "cece/cece_internal.hpp"
 #include "cece/cece_regridder_utils.hpp"
+#include "cece/cece_standalone_writer.hpp"
 
 namespace fs = std::filesystem;
 
@@ -26,11 +27,17 @@ void cece_ingestor_set_field(void* data_ptr, const char* field_name, int name_le
 namespace cece {
 
 CeceDriverOrchestrator::CeceDriverOrchestrator(const std::string& config_file, int nx, int ny, int nz, const double* lon_coords,
-                                               const double* lat_coords)
-    : config_file_(config_file), nx_(nx), ny_(ny), nz_(nz), target_lons_(lon_coords, lon_coords + nx), target_lats_(lat_coords, lat_coords + ny) {
+                                               const double* lat_coords, MPI_Comm comm_c)
+    : config_file_(config_file),
+      nx_(nx),
+      ny_(ny),
+      nz_(nz),
+      target_lons_(lon_coords, lon_coords + nx),
+      target_lats_(lat_coords, lat_coords + ny),
+      comm_c_(comm_c) {
     cece_io_ = std::make_unique<io::CeceIO>();
     cece_io_->Initialize(config_file_);
-    CompileHelmGraph(config_file_, dagr_, *cece_io_);
+    CompileHelmGraph(config_file_, dagr_, *cece_io_, comm_c_);
 }
 
 CeceDriverOrchestrator::~CeceDriverOrchestrator() {
@@ -231,13 +238,22 @@ bool CeceDriverOrchestrator::AdvanceTime(const std::string& time_iso8601, void* 
 }  // namespace cece
 
 extern "C" {
+void amio_set_parent_communicator(MPI_Fint comm);
 
 void cece_driver_create(const char* yaml_path, int path_len, int nx, int ny, int nz, const double* lon_coords, const double* lat_coords,
-                        void** driver_ptr_out, int* rc) {
+                        int mpi_comm_f, void** driver_ptr_out, int* rc) {
     if (rc) *rc = 0;
     try {
         std::string path(yaml_path, path_len);
-        auto* driver = new cece::CeceDriverOrchestrator(path, nx, ny, nz, lon_coords, lat_coords);
+
+        // 1. Pass custom parent communicator to AMIO
+        amio_set_parent_communicator(static_cast<MPI_Fint>(mpi_comm_f));
+
+        // 2. Convert Fortran MPI handle to C MPI_Comm
+        MPI_Comm comm_c = MPI_Comm_f2c(static_cast<MPI_Fint>(mpi_comm_f));
+
+        // 3. Create orchestrator using the custom communicator
+        auto* driver = new cece::CeceDriverOrchestrator(path, nx, ny, nz, lon_coords, lat_coords, comm_c);
         *driver_ptr_out = static_cast<void*>(driver);
     } catch (const std::exception& e) {
         std::cerr << "ERROR: cece_driver_create: " << e.what() << std::endl;
@@ -258,10 +274,13 @@ void cece_driver_advance_time(void* driver_ptr, const char* time_iso8601, int ti
     }
 }
 
+extern std::unique_ptr<cece::CeceStandaloneWriter> g_standalone_writer;
+
 void cece_driver_destroy(void* driver_ptr) {
     if (driver_ptr) {
         delete static_cast<cece::CeceDriverOrchestrator*>(driver_ptr);
     }
+    g_standalone_writer.reset();
 }
 
 }  // extern "C"

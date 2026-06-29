@@ -1,6 +1,8 @@
 #ifndef CECE_DRIVER_FACADE_HPP
 #define CECE_DRIVER_FACADE_HPP
 
+#include <mpi.h>
+
 #include <dagr/dagr.hpp>
 #include <memory>
 #include <string>
@@ -12,7 +14,8 @@ namespace cece {
 
 class CeceDriverOrchestrator {
    public:
-    CeceDriverOrchestrator(const std::string& config_file, int nx, int ny, int nz, const double* lon_coords, const double* lat_coords);
+    CeceDriverOrchestrator(const std::string& config_file, int nx, int ny, int nz, const double* lon_coords, const double* lat_coords,
+                           MPI_Comm comm_c);
     ~CeceDriverOrchestrator();
 
     bool AdvanceTime(const std::string& time_iso8601, void* cece_core_data_ptr);
@@ -23,6 +26,7 @@ class CeceDriverOrchestrator {
     std::vector<double> target_lons_;
     std::vector<double> target_lats_;
     int step_index_{0};
+    MPI_Comm comm_c_{MPI_COMM_NULL};
 
     // HELM Orchestration and pipeline components
     std::unique_ptr<dagr::GraphOrchestrator> dagr_;
@@ -33,7 +37,7 @@ class CeceDriverOrchestrator {
 
 extern "C" {
 void cece_driver_create(const char* yaml_path, int path_len, int nx, int ny, int nz, const double* lon_coords, const double* lat_coords,
-                        void** driver_ptr_out, int* rc);
+                        int mpi_comm_f, void** driver_ptr_out, int* rc);
 
 void cece_driver_advance_time(void* driver_ptr, const char* time_iso8601, int time_len, void* cece_core_data_ptr, int* rc);
 
