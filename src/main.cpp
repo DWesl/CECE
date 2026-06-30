@@ -12,6 +12,7 @@
 #include <memory>
 #include <string>
 #include <tick/tick.hpp>
+#include <unordered_map>
 #include <vector>
 
 #include "cece/cece_driver_facade.hpp"
@@ -136,13 +137,14 @@ int main(int argc, char* argv[]) {
         // Phase 2: Complete grid-binding (dynamically sized)
         cece_core_initialize_p2(cece_data_ptr, &nx, &ny, &nz, &rc);
 
-        // Register the export fields configured for output
+        // Register the export fields configured for output with persistent memory buffers
+        std::unordered_map<std::string, std::vector<double>> export_fields_mem;
         if (config["output"] && config["output"]["fields"]) {
             for (const auto& field_node : config["output"]["fields"]) {
                 std::string field_name = field_node.as<std::string>();
-                std::vector<double> field_mem(static_cast<std::size_t>(nx) * ny * nz, 0.0);
-                cece_core_set_export_field(cece_data_ptr, field_name.c_str(), static_cast<int>(field_name.length()), field_mem.data(), nx, ny, nz,
-                                           &rc);
+                export_fields_mem[field_name] = std::vector<double>(static_cast<std::size_t>(nx) * ny * nz, 0.0);
+                cece_core_set_export_field(cece_data_ptr, field_name.c_str(), static_cast<int>(field_name.length()),
+                                           export_fields_mem[field_name].data(), nx, ny, nz, &rc);
             }
         }
 
