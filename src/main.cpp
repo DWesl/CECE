@@ -96,7 +96,7 @@ int main(int argc, char* argv[]) {
         if (config["output"] && config["output"]["fields"]) {
             for (const auto& field_node : config["output"]["fields"]) {
                 std::string field_name = field_node.as<std::string>();
-                std::vector<double> field_mem(nx * ny * nz, 0.0);
+                std::vector<double> field_mem(static_cast<std::size_t>(nx) * ny * nz, 0.0);
                 cece_core_set_export_field(cece_data_ptr, field_name.c_str(), static_cast<int>(field_name.length()), field_mem.data(), nx, ny, nz,
                                            &rc);
             }
