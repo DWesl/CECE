@@ -84,8 +84,21 @@ int main(int argc, char* argv[]) {
                 try {
                     auto parsed = axis::topology::NamedGridRegistry::parse(grid_name);
                     if (parsed.family == 'F') {
-                        nx = 4 * parsed.number;
-                        ny = 2 * parsed.number;
+                        int expected_nx = 4 * parsed.number;
+                        int expected_ny = 2 * parsed.number;
+
+                        int declared_nx = grid_node["nx"].as<int>(0);
+                        int declared_ny = grid_node["ny"].as<int>(0);
+                        if (declared_nx != 0 && declared_ny != 0) {
+                            if (declared_nx != expected_nx || declared_ny != expected_ny) {
+                                std::cerr << "ERROR: Grid dimensions nx=" << declared_nx << ", ny=" << declared_ny
+                                          << " do not match the expected dimensions for Named Grid " << grid_name << " (" << expected_nx << "x"
+                                          << expected_ny << ")!" << std::endl;
+                                return -1;
+                            }
+                        }
+                        nx = expected_nx;
+                        ny = expected_ny;
                     } else {
                         std::cerr
                             << "ERROR: Only regular Gaussian grids (family 'F', e.g. 'F360') are currently supported as structured CECE target grids."
@@ -143,38 +156,131 @@ int main(int argc, char* argv[]) {
                 auto mesh = axis::topology::NamedGridRegistry::generate<Kokkos::HostSpace>(grid_name);
                 auto coords = mesh.node_coords();
                 for (int i = 0; i < nx; ++i) {
-                    file_lons[i] = coords(i, 0);
+                    double lon = coords(i, 0);
+                    if (lon >= 180.0) {
+                        lon -= 360.0;
+                    }
+                    file_lons[i] = lon;
                 }
                 for (int j = 0; j < ny; ++j) {
                     file_lats[j] = coords(j * nx, 1);
                 }
+                std::sort(file_lons.begin(), file_lons.end());
+                std::sort(file_lats.begin(), file_lats.end());
                 has_file_coords = true;
             } catch (const std::exception& e) {
                 std::cerr << "ERROR: Failed to retrieve coordinates from named grid '" << grid_name << "': " << e.what() << std::endl;
                 return -1;
             }
         } else {
-            double lon_min = -180.0;
-            double lon_max = 180.0;
-            double lat_min = -90.0;
-            double lat_max = 90.0;
-
-            if (config["driver"] && config["driver"]["grid"]) {
-                auto grid_node = config["driver"]["grid"];
-                lon_min = grid_node["lon_min"].as<double>(-180.0);
-                lon_max = grid_node["lon_max"].as<double>(180.0);
-                lat_min = grid_node["lat_min"].as<double>(-90.0);
-                lat_max = grid_node["lat_max"].as<double>(90.0);
+            bool loaded_from_file = false;
+            std::string input_file_path = "../scripts/data/MACCity_4x5.nc";  // default fallback
+            if (config["cece_data"] && config["cece_data"]["streams"]) {
+                auto stream = config["cece_data"]["streams"][0];
+                if (stream["file"]) {
+                    input_file_path = stream["file"].as<std::string>();
+                }
             }
 
-            double dlon = (lon_max - lon_min) / nx;
-            double dlat = (lat_max - lat_min) / ny;
+            std::string read_manifest_path = "amio_coord_manifest.yaml";
+            std::ofstream m_file_coords(read_manifest_path);
+            m_file_coords << "backend: netcdf4\n"
+                          << "path: " << input_file_path << "\n"
+                          << "data_model: enhanced\n"
+                          << "staging_pool:\n"
+                          << "  buffer_count: 16\n"
+                          << "  buffer_capacity_bytes: 104857600\n"
+                          << "worker_pool:\n"
+                          << "  threads: 0\n";
+            m_file_coords.close();
 
-            for (int i = 0; i < nx; ++i) {
-                file_lons[i] = lon_min + dlon * (i + 0.5);
+            amio_core_handle coord_core = nullptr;
+            amio_dataset_handle coord_dataset = nullptr;
+            amio_view_handle lon_view = nullptr;
+            amio_view_handle lat_view = nullptr;
+
+            amio_status_t amio_rc = amio_init(read_manifest_path.c_str(), &coord_core);
+            if (amio_rc == AMIO_OK) {
+                amio_rc = amio_open_dataset(coord_core, read_manifest_path.c_str(), AMIO_MODE_READ, &coord_dataset);
+                if (amio_rc == AMIO_OK) {
+                    int file_nx = 0;
+                    int file_ny = 0;
+                    std::vector<double> file_lon_coords;
+                    std::vector<double> file_lat_coords;
+
+                    if (amio_read(coord_dataset, "lon", 0, nullptr, &lon_view) == AMIO_OK) {
+                        const void* view_data = nullptr;
+                        size_t view_size = 0;
+                        if (amio_view_data(lon_view, &view_data, &view_size) == AMIO_OK) {
+                            amio_shape_t lon_shape{};
+                            if (amio_view_shape(lon_view, &lon_shape) == AMIO_OK) {
+                                file_nx = static_cast<int>(lon_shape.extents[0]);
+                                bool is_float = (view_size == static_cast<size_t>(file_nx) * 4);
+                                const float* float_data = static_cast<const float*>(view_data);
+                                const double* double_data = static_cast<const double*>(view_data);
+                                file_lon_coords.resize(file_nx);
+                                for (int i = 0; i < file_nx; ++i) {
+                                    file_lon_coords[i] = is_float ? static_cast<double>(float_data[i]) : double_data[i];
+                                }
+                            }
+                        }
+                        amio_release_view(lon_view);
+                    }
+
+                    if (amio_read(coord_dataset, "lat", 0, nullptr, &lat_view) == AMIO_OK) {
+                        const void* view_data = nullptr;
+                        size_t view_size = 0;
+                        if (amio_view_data(lat_view, &view_data, &view_size) == AMIO_OK) {
+                            amio_shape_t lat_shape{};
+                            if (amio_view_shape(lat_view, &lat_shape) == AMIO_OK) {
+                                file_ny = static_cast<int>(lat_shape.extents[0]);
+                                bool is_float = (view_size == static_cast<size_t>(file_ny) * 4);
+                                const float* float_data = static_cast<const float*>(view_data);
+                                const double* double_data = static_cast<const double*>(view_data);
+                                file_lat_coords.resize(file_ny);
+                                for (int j = 0; j < file_ny; ++j) {
+                                    file_lat_coords[j] = is_float ? static_cast<double>(float_data[j]) : double_data[j];
+                                }
+                            }
+                        }
+                        amio_release_view(lat_view);
+                    }
+
+                    amio_close(coord_dataset);
+
+                    if (nx == file_nx && ny == file_ny && file_nx > 0 && file_ny > 0) {
+                        file_lons = file_lon_coords;
+                        file_lats = file_lat_coords;
+                        loaded_from_file = true;
+                    }
+                }
+                amio_finalize(coord_core);
             }
-            for (int j = 0; j < ny; ++j) {
-                file_lats[j] = lat_min + dlat * (j + 0.5);
+            std::remove(read_manifest_path.c_str());
+
+            if (!loaded_from_file) {
+                double lon_min = -180.0;
+                double lon_max = 180.0;
+                double lat_min = -90.0;
+                double lat_max = 90.0;
+
+                if (config["driver"] && config["driver"]["grid"]) {
+                    auto grid_node = config["driver"]["grid"];
+                    lon_min = grid_node["lon_min"].as<double>(-180.0);
+                    lon_max = grid_node["lon_max"].as<double>(180.0);
+                    lat_min = grid_node["lat_min"].as<double>(-90.0);
+                    lat_max = grid_node["lat_max"].as<double>(90.0);
+                }
+
+                double dlon = (lon_max - lon_min) / nx;
+                double dlat = (lat_max - lat_min) / ny;
+
+                for (int i = 0; i < nx; ++i) {
+                    file_lons[i] = lon_min + dlon * (i + 0.5);
+                }
+                for (int j = 0; j < ny; ++j) {
+                    file_lats[j] = lat_min + dlat * (j + 0.5);
+                }
             }
             has_file_coords = true;
         }
