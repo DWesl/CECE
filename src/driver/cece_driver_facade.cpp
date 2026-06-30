@@ -226,25 +226,11 @@ bool CeceDriverOrchestrator::AdvanceTime(const std::string& time_iso8601, void* 
         }
         std::remove(read_manifest_path.c_str());
 
-        // Fallback to spatially-varying formula if AMIO read fails
+        // Throw a fatal error on AMIO read failures
         if (!read_success) {
-            std::cout << "[DRIVER DEBUG] AMIO read failed for field '" << var_name << "' - falling back to idealized formula!" << std::endl;
-            double base_val = 1.0;
-            for (char c : var_name) {
-                base_val += static_cast<double>(c);
-            }
-            double test_val = base_val / 10.0;
-
-            auto h_view = Kokkos::create_mirror_view(tide_view);
-            for (int k_idx = 0; k_idx < nz_; ++k_idx) {
-                for (int j_idx = 0; j_idx < ny_; ++j_idx) {
-                    for (int i_idx = 0; i_idx < nx_; ++i_idx) {
-                        h_view(i_idx, j_idx, k_idx) =
-                            test_val + static_cast<double>(i_idx) * 0.1 + static_cast<double>(j_idx) * 0.5 + static_cast<double>(k_idx) * 2.0;
-                    }
-                }
-            }
-            Kokkos::deep_copy(tide_view, h_view);
+            std::cerr << "[FATAL ERROR] AMIO read failed for field '" << var_name << "' in file '" << input_file_path
+                      << "'. Idealized fallback is disabled!" << std::endl;
+            return false;
         } else {
             std::cout << "[DRIVER DEBUG] AMIO read succeeded for field '" << var_name << "' - loaded real data from " << input_file_path << "!"
                       << std::endl;

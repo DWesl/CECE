@@ -319,6 +319,10 @@ int main(int argc, char* argv[]) {
 
             // A. Let cece_driver handle all offline AMIO reading and AXIS regridding:
             cece_driver_advance_time(cece_driver_data, time_str.c_str(), static_cast<int>(time_str.length()), cece_data_ptr, &rc);
+            if (rc != 0) {
+                std::cerr << "[DRIVER FATAL] cece_driver_advance_time failed to ingest data step - aborting simulation!" << std::endl;
+                throw std::runtime_error("cece_driver_advance_time failed");
+            }
 
             // B. Execute the CECE Compute Engine
             int hour = current_dt.hour;
