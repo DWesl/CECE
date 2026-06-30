@@ -86,6 +86,15 @@ bool CeceDriverOrchestrator::AdvanceTime(const std::string& time_iso8601, void* 
             }
         }
 
+        // Verify if the input file path exists and is accessible from this compute/login node
+        std::error_code fs_ec;
+        if (!fs::exists(input_file_path, fs_ec)) {
+            std::cerr << "[DRIVER FATAL] File '" << input_file_path
+                      << "' does not exist or is unreadable on this node! (System error: " << fs_ec.message() << ")" << std::endl;
+        } else {
+            std::cout << "[DRIVER DEBUG] Input file '" << input_file_path << "' successfully verified on local filesystem." << std::endl;
+        }
+
         bool read_success = false;
 
         // Dynamically open and read using AMIO API
