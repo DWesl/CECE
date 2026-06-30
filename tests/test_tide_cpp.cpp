@@ -73,7 +73,7 @@ class KokkosMpiEnvironment : public ::testing::Environment {
 
         // Initialize Kokkos
         if (!Kokkos::is_initialized()) {
-            Kokkos::initialize();
+            Kokkos::initialize(argc_, argv_);
         }
 
         // Initialize HALO Environment
@@ -95,6 +95,10 @@ class KokkosMpiEnvironment : public ::testing::Environment {
 };
 
 int main(int argc, char** argv) {
+    // Configure Intel MPI to allow standalone, local-only execution on login nodes (prevent PMI2/Hydra aborts)
+    setenv("I_MPI_HYDRA_BOOTSTRAP", "none", 0);
+    setenv("I_MPI_SHM", "disable", 0);
+
     ::testing::InitGoogleTest(&argc, argv);
     ::testing::AddGlobalTestEnvironment(new KokkosMpiEnvironment(argc, argv));
     return RUN_ALL_TESTS();
