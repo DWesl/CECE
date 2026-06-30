@@ -101,13 +101,18 @@ bool CeceDriverOrchestrator::AdvanceTime(const std::string& time_iso8601, void* 
         amio_view_handle read_view = nullptr;
 
         amio_status_t amio_rc = amio_init(read_manifest_path.c_str(), &read_core);
-        if (amio_rc == AMIO_OK) {
+        if (amio_rc != AMIO_OK) {
+            std::cout << "[DRIVER DEBUG] amio_init failed with rc = " << amio_rc << std::endl;
+        } else {
             amio_rc = amio_open_dataset(read_core, read_manifest_path.c_str(), AMIO_MODE_READ, &read_dataset);
-            if (amio_rc == AMIO_OK) {
+            if (amio_rc != AMIO_OK) {
+                std::cout << "[DRIVER DEBUG] amio_open_dataset failed for " << input_file_path << " with rc = " << amio_rc << std::endl;
+            } else {
                 // 1. Read 'lon' coordinates dynamically from this file
                 std::vector<double> src_lons;
                 amio_view_handle lon_check_view = nullptr;
-                if (amio_read(read_dataset, "lon", 0, nullptr, &lon_check_view) == AMIO_OK) {
+                amio_status_t lon_rc = amio_read(read_dataset, "lon", 0, nullptr, &lon_check_view);
+                if (lon_rc == AMIO_OK) {
                     const void* lon_data = nullptr;
                     size_t lon_size = 0;
                     if (amio_view_data(lon_check_view, &lon_data, &lon_size) == AMIO_OK) {
@@ -122,13 +127,16 @@ bool CeceDriverOrchestrator::AdvanceTime(const std::string& time_iso8601, void* 
                         }
                     }
                     amio_release_view(lon_check_view);
+                } else {
+                    std::cout << "[DRIVER DEBUG] amio_read('lon') failed with rc = " << lon_rc << std::endl;
                 }
 
                 // 2. Read 'lat' coordinates dynamically from this file (handles flips automatically!)
                 std::vector<double> src_lats;
                 bool is_lat_flipped = false;
                 amio_view_handle lat_check_view = nullptr;
-                if (amio_read(read_dataset, "lat", 0, nullptr, &lat_check_view) == AMIO_OK) {
+                amio_status_t lat_rc = amio_read(read_dataset, "lat", 0, nullptr, &lat_check_view);
+                if (lat_rc == AMIO_OK) {
                     const void* lat_data = nullptr;
                     size_t lat_size = 0;
                     if (amio_view_data(lat_check_view, &lat_data, &lat_size) == AMIO_OK) {
@@ -148,6 +156,8 @@ bool CeceDriverOrchestrator::AdvanceTime(const std::string& time_iso8601, void* 
                         }
                     }
                     amio_release_view(lat_check_view);
+                } else {
+                    std::cout << "[DRIVER DEBUG] amio_read('lat') failed with rc = " << lat_rc << std::endl;
                 }
 
                 // 3. Dynamically determine total timesteps from coordinate variables (time or date)
@@ -193,9 +203,18 @@ bool CeceDriverOrchestrator::AdvanceTime(const std::string& time_iso8601, void* 
                             read_success =
                                 cece::io::regrid_stream_field(read_dataset, input_var_name, step_index_, file_nt, time_offset, is_float, view_data,
                                                               file_nx, file_ny, nx_, ny_, target_lons_, target_lats_, tide_view);
+                            if (!read_success) {
+                                std::cout << "[DRIVER DEBUG] regrid_stream_field returned false!" << std::endl;
+                            }
+                        } else {
+                            std::cout << "[DRIVER DEBUG] amio_view_shape failed!" << std::endl;
                         }
+                    } else {
+                        std::cout << "[DRIVER DEBUG] amio_view_data failed with rc = " << amio_rc << std::endl;
                     }
                     amio_release_view(read_view);
+                } else {
+                    std::cout << "[DRIVER DEBUG] amio_read('" << input_var_name << "') failed with rc = " << amio_rc << std::endl;
                 }
                 amio_close(read_dataset);
             }
@@ -205,6 +224,7 @@ bool CeceDriverOrchestrator::AdvanceTime(const std::string& time_iso8601, void* 
 
         // Fallback to spatially-varying formula if AMIO read fails
         if (!read_success) {
+            std::cout << "[DRIVER DEBUG] AMIO read failed for field '" << var_name << "' - falling back to idealized formula!" << std::endl;
             double base_val = 1.0;
             for (char c : var_name) {
                 base_val += static_cast<double>(c);
@@ -221,6 +241,9 @@ bool CeceDriverOrchestrator::AdvanceTime(const std::string& time_iso8601, void* 
                 }
             }
             Kokkos::deep_copy(tide_view, h_view);
+        } else {
+            std::cout << "[DRIVER DEBUG] AMIO read succeeded for field '" << var_name << "' - loaded real data from " << input_file_path << "!"
+                      << std::endl;
         }
 
         // Ingest raw data pointer of Tide view into CECE's ingestor cache
