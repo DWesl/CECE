@@ -1,10 +1,15 @@
 #include <gtest/gtest.h>
+#include <mpi.h>
 
 #include <Kokkos_Core.hpp>
 #include <algorithm>
 #include <cstring>
+#include <filesystem>
+#include <fstream>
 #include <vector>
 
+#include "cece/cece_config.hpp"
+#include "cece/cece_standalone_writer.hpp"
 #include "cece/cece_utils.hpp"
 
 namespace cece::test {
@@ -12,9 +17,7 @@ namespace cece::test {
 class CeceUtilsTest : public ::testing::Test {
    protected:
     void SetUp() override {
-        if (!Kokkos::is_initialized()) {
-            Kokkos::initialize();
-        }
+        // Kokkos and MPI are managed by KokkosMpiEnvironment
     }
 };
 
@@ -49,9 +52,120 @@ TEST_F(CeceUtilsTest, WrapESMCFieldUpdatesRawData) {
     EXPECT_DOUBLE_EQ(view(2, 3, 1), 42.0);
 }
 
+TEST_F(CeceUtilsTest, StandaloneWriterDuplicateCoordsDetection) {
+    CeceOutputConfig config;
+    config.enabled = true;
+    config.directory = "test_output_dir";
+
+    CeceStandaloneWriter writer(config);
+
+    // Standard non-duplicate coordinates
+    std::vector<double> lon_ok = {-180.0, -90.0, 0.0, 90.0};
+    std::vector<double> lat_ok = {-90.0, -45.0, 0.0, 45.0};
+
+    // 1. Unique coordinates should succeed
+    int rc_ok = writer.InitializeWithCoords("2026-06-29T12:00:00", 4, 4, 1, lon_ok, lat_ok);
+    EXPECT_EQ(rc_ok, 0);
+    writer.Finalize();
+
+    // 2. Duplicate longitudes should fail
+    std::vector<double> lon_dup = {-180.0, 0.0, 0.0, 90.0};
+    int rc_lon_dup = writer.InitializeWithCoords("2026-06-29T12:00:00", 4, 4, 1, lon_dup, lat_ok);
+    EXPECT_EQ(rc_lon_dup, -1);
+    writer.Finalize();
+
+    // 3. Duplicate latitudes should fail
+    std::vector<double> lat_dup = {-90.0, 0.0, 0.0, 45.0};
+    int rc_lat_dup = writer.InitializeWithCoords("2026-06-29T12:00:00", 4, 4, 1, lon_ok, lat_dup);
+    EXPECT_EQ(rc_lat_dup, -1);
+    writer.Finalize();
+
+    // Cleanup output directory if created
+    if (std::filesystem::exists("test_output_dir")) {
+        std::filesystem::remove_all("test_output_dir");
+    }
+}
+
+TEST_F(CeceUtilsTest, StandaloneWriterDuplicateFieldsFiltering) {
+    CeceOutputConfig config;
+    config.enabled = true;
+    config.directory = "test_output_dir_fields";
+    config.fields = {"lon", "lat", "lev", "time", "test_field"};
+
+    CeceStandaloneWriter writer(config);
+
+    std::vector<double> lon_ok = {-180.0, -90.0, 0.0, 90.0};
+    std::vector<double> lat_ok = {-90.0, -45.0, 0.0, 45.0};
+
+    int rc = writer.InitializeWithCoords("2026-06-29T12:00:00", 4, 4, 1, lon_ok, lat_ok);
+    ASSERT_EQ(rc, 0);
+
+    // Create a mock field map
+    std::unordered_map<std::string, DualView3D> fields;
+    DualView3D test_field_view("test_field", 4, 4, 1);
+    test_field_view.sync<Kokkos::HostSpace>();
+    auto h_view = test_field_view.view_host();
+    Kokkos::deep_copy(h_view, 1.0);
+    test_field_view.modify<Kokkos::HostSpace>();
+
+    // Also put coordinate fields if they are present in the map to see if they are skipped
+    DualView3D lon_field_view("lon", 4, 4, 1);
+    fields["test_field"] = test_field_view;
+    fields["lon"] = lon_field_view;  // This should be skipped safely!
+
+    // Write a time step
+    int rc_write = writer.WriteTimeStep(fields, 0.0, 0);
+    EXPECT_EQ(rc_write, 0);  // Should succeed and write test_field, skipping lon!
+
+    writer.Finalize();
+
+    // Verify file exists
+    std::string expected_file = "test_output_dir_fields/cece_output_20260629_120000.nc";
+    EXPECT_TRUE(std::filesystem::exists(expected_file));
+
+    if (std::filesystem::exists("test_output_dir_fields")) {
+        std::filesystem::remove_all("test_output_dir_fields");
+    }
+}
+
 }  // namespace cece::test
+
+// Custom GTest Environment to manage Kokkos & MPI lifecycle globally
+class KokkosMpiEnvironment : public ::testing::Environment {
+   public:
+    void SetUp() override {
+        // Initialize MPI first
+        int mpi_initialized = 0;
+        MPI_Initialized(&mpi_initialized);
+        if (!mpi_initialized) {
+            int argc = 0;
+            char** argv = nullptr;
+            int provided = 0;
+            MPI_Init_thread(&argc, &argv, MPI_THREAD_MULTIPLE, &provided);
+        }
+
+        // Initialize Kokkos
+        if (!Kokkos::is_initialized()) {
+            Kokkos::initialize();
+        }
+    }
+    void TearDown() override {
+        // Finalize Kokkos
+        if (Kokkos::is_initialized()) {
+            Kokkos::finalize();
+        }
+
+        // Finalize MPI
+        int mpi_initialized = 0;
+        MPI_Initialized(&mpi_initialized);
+        if (mpi_initialized) {
+            MPI_Finalize();
+        }
+    }
+};
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
+    ::testing::AddGlobalTestEnvironment(new KokkosMpiEnvironment);
     return RUN_ALL_TESTS();
 }

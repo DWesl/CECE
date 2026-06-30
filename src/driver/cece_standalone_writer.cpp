@@ -7,6 +7,7 @@
 #include <filesystem>
 #include <fstream>
 #include <iomanip>
+#include <set>
 #include <sstream>
 #include <vector>
 
@@ -118,6 +119,24 @@ int CeceStandaloneWriter::InitializeWithCoords(const std::string& start_time_iso
                                                const std::vector<double>& lat_coords) {
     if (!config_.enabled) return 0;
 
+    // Check for duplicate longitude values
+    {
+        std::set<double> unique_lons(lon_coords.begin(), lon_coords.end());
+        if (unique_lons.size() < lon_coords.size()) {
+            CECE_LOG_ERROR("[CECE] Duplicate longitude coordinates detected in input array!");
+            return -1;
+        }
+    }
+
+    // Check for duplicate latitude values
+    {
+        std::set<double> unique_lats(lat_coords.begin(), lat_coords.end());
+        if (unique_lats.size() < lat_coords.size()) {
+            CECE_LOG_ERROR("[CECE] Duplicate latitude coordinates detected in input array!");
+            return -1;
+        }
+    }
+
     start_time_iso8601_ = start_time_iso8601;
     nx_ = nx;
     ny_ = ny;
@@ -193,6 +212,9 @@ int CeceStandaloneWriter::WriteTimeStep(const std::unordered_map<std::string, Du
                << "  Conventions: \"CF-1.8\"\n"
                << "variable_names: [\"lon\", \"lat\", \"lev\", \"time\"";
         for (const auto& name : config_.fields) {
+            if (name == "lon" || name == "lat" || name == "lev" || name == "time") {
+                continue;
+            }
             m_file << ", \"" << name << "\"";
         }
         m_file << "]\n"
@@ -214,6 +236,9 @@ int CeceStandaloneWriter::WriteTimeStep(const std::unordered_map<std::string, Du
                << "      units: \"" << time_units << "\"\n"
                << "      long_name: \"time\"\n";
         for (const auto& name : config_.fields) {
+            if (name == "lon" || name == "lat" || name == "lev" || name == "time") {
+                continue;
+            }
             m_file << "  " << name << ":\n"
                    << "    attributes:\n"
                    << "      units: \"mol mol-1\"\n"
@@ -285,6 +310,10 @@ int CeceStandaloneWriter::WriteTimeStep(const std::unordered_map<std::string, Du
 
         // Step 8: Write fields
         for (const auto& [name, view] : fields) {
+            if (name == "lon" || name == "lat" || name == "lev" || name == "time") {
+                continue;
+            }
+
             bool should_write = false;
             if (config_.fields.empty()) {
                 should_write = true;
