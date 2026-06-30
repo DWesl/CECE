@@ -22,6 +22,7 @@ namespace fs = std::filesystem;
 
 extern "C" {
 void cece_ingestor_set_field(void* data_ptr, const char* field_name, int name_len, const double* field_data, int n_lev, int n_elem, int* rc);
+void amio_set_parent_communicator(MPI_Fint comm);
 }
 
 namespace cece {
@@ -116,6 +117,12 @@ bool CeceDriverOrchestrator::AdvanceTime(const std::string& time_iso8601, void* 
             MPI_Barrier(comm_c_);
         }
 
+        // Temporarily set parent communicator to MPI_COMM_SELF to force serial nc_open read fallback
+        // (which supports NetCDF-3 classic files and avoids parallel filesystem lock crashes on compute nodes)
+        if (mpi_initialized) {
+            amio_set_parent_communicator(MPI_Comm_c2f(MPI_COMM_SELF));
+        }
+
         amio_core_handle read_core = nullptr;
         amio_dataset_handle read_dataset = nullptr;
         amio_view_handle read_view = nullptr;
@@ -125,6 +132,12 @@ bool CeceDriverOrchestrator::AdvanceTime(const std::string& time_iso8601, void* 
             std::cout << "[DRIVER DEBUG] amio_init failed with rc = " << amio_rc << std::endl;
         } else {
             amio_rc = amio_open_dataset(read_core, read_manifest_path.c_str(), AMIO_MODE_READ, &read_dataset);
+
+            // Restore parent communicator to our parallel communicator for downstream output writer execution
+            if (mpi_initialized && comm_c_ != MPI_COMM_NULL) {
+                amio_set_parent_communicator(MPI_Comm_c2f(comm_c_));
+            }
+
             if (amio_rc != AMIO_OK) {
                 std::cout << "[DRIVER DEBUG] amio_open_dataset failed for " << input_file_path << " with rc = " << amio_rc << std::endl;
             } else {
