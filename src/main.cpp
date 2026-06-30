@@ -113,6 +113,8 @@ int main(int argc, char* argv[]) {
             }
         }
 
+        std::cout << "[DRIVER DEBUG] Parsed nx = " << nx << ", ny = " << ny << ", grid_name = '" << grid_name << "'" << std::endl;
+
         // B. Simulation Clock Timing
         std::string start_time_str = config["driver"]["start_time"].as<std::string>();
         std::string end_time_str = config["driver"]["end_time"].as<std::string>();
@@ -193,7 +195,11 @@ int main(int argc, char* argv[]) {
                           << "  buffer_count: 16\n"
                           << "  buffer_capacity_bytes: 104857600\n"
                           << "worker_pool:\n"
-                          << "  threads: 0\n";
+                          << "  threads: 1\n"
+                          << "prefetch:\n"
+                          << "  depth: 4\n"
+                          << "  read_timeout_s: 60\n"
+                          << "staging_timeout_ms: 10000\n";
             m_file_coords.close();
 
             amio_core_handle coord_core = nullptr;

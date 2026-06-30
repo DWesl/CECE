@@ -117,7 +117,11 @@ bool CeceDriverOrchestrator::AdvanceTime(const std::string& time_iso8601, void* 
                    << "  buffer_count: 16\n"
                    << "  buffer_capacity_bytes: 209715200\n"
                    << "worker_pool:\n"
-                   << "  threads: 0\n";
+                   << "  threads: 1\n"
+                   << "prefetch:\n"
+                   << "  depth: 4\n"
+                   << "  read_timeout_s: 60\n"
+                   << "staging_timeout_ms: 10000\n";
             m_file.close();
         }
 
