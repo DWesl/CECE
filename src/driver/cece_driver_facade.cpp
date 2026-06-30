@@ -89,16 +89,32 @@ bool CeceDriverOrchestrator::AdvanceTime(const std::string& time_iso8601, void* 
 
         // Dynamically open and read using AMIO API
         std::string read_manifest_path = "amio_read_manifest_facade_" + var_name + ".yaml";
-        std::ofstream m_file(read_manifest_path);
-        m_file << "backend: netcdf4\n"
-               << "path: " << input_file_path << "\n"
-               << "data_model: enhanced\n"
-               << "staging_pool:\n"
-               << "  buffer_count: 16\n"
-               << "  buffer_capacity_bytes: 209715200\n"
-               << "worker_pool:\n"
-               << "  threads: 0\n";
-        m_file.close();
+
+        int rank = 0;
+        int mpi_initialized = 0;
+        MPI_Initialized(&mpi_initialized);
+        if (mpi_initialized && comm_c_ != MPI_COMM_NULL) {
+            MPI_Comm_rank(comm_c_, &rank);
+        }
+
+        if (rank == 0) {
+            // Write input manifest YAML (Rank 0 only to prevent parallel write conflicts)
+            std::ofstream m_file(read_manifest_path);
+            m_file << "backend: netcdf4\n"
+                   << "path: " << input_file_path << "\n"
+                   << "data_model: enhanced\n"
+                   << "staging_pool:\n"
+                   << "  buffer_count: 16\n"
+                   << "  buffer_capacity_bytes: 209715200\n"
+                   << "worker_pool:\n"
+                   << "  threads: 0\n";
+            m_file.close();
+        }
+
+        // Wait for Rank 0 to finish writing the manifest before other ranks load it
+        if (mpi_initialized && comm_c_ != MPI_COMM_NULL) {
+            MPI_Barrier(comm_c_);
+        }
 
         amio_core_handle read_core = nullptr;
         amio_dataset_handle read_dataset = nullptr;
@@ -224,7 +240,14 @@ bool CeceDriverOrchestrator::AdvanceTime(const std::string& time_iso8601, void* 
             }
             amio_finalize(read_core);
         }
-        std::remove(read_manifest_path.c_str());
+
+        // Wait for all ranks to finalize their AMIO sessions before deleting the manifest file
+        if (mpi_initialized && comm_c_ != MPI_COMM_NULL) {
+            MPI_Barrier(comm_c_);
+        }
+        if (rank == 0) {
+            std::remove(read_manifest_path.c_str());
+        }
 
         // Throw a fatal error on AMIO read failures
         if (!read_success) {
