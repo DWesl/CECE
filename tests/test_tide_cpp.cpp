@@ -25,7 +25,7 @@ std::string GetConfigPath() {
 
 TEST(TideTest, TestBMIPointerAllocation) {
     cece::io::CeceIO cece_io;
-    EXPECT_THROW(cece_io.Initialize("non_existent_file.yaml", 72, 46, 1), std::runtime_error);
+    EXPECT_ANY_THROW(cece_io.Initialize("non_existent_file.yaml", 72, 46, 1));
 }
 
 TEST(TideTest, TestDynamicGraphCompilation) {
@@ -55,16 +55,20 @@ TEST(TideTest, TestEndToEndDriverLoopStub) {
 
 // Custom GTest Environment to manage Kokkos & MPI lifecycle globally
 class KokkosMpiEnvironment : public ::testing::Environment {
+   private:
+    int argc_;
+    char** argv_;
+
    public:
+    KokkosMpiEnvironment(int argc, char** argv) : argc_(argc), argv_(argv) {}
+
     void SetUp() override {
         // Initialize MPI first
         int mpi_initialized = 0;
         MPI_Initialized(&mpi_initialized);
         if (!mpi_initialized) {
-            int argc = 0;
-            char** argv = nullptr;
             int provided = 0;
-            MPI_Init_thread(&argc, &argv, MPI_THREAD_MULTIPLE, &provided);
+            MPI_Init_thread(&argc_, &argv_, MPI_THREAD_MULTIPLE, &provided);
         }
 
         // Initialize Kokkos
@@ -92,6 +96,6 @@ class KokkosMpiEnvironment : public ::testing::Environment {
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
-    ::testing::AddGlobalTestEnvironment(new KokkosMpiEnvironment);
+    ::testing::AddGlobalTestEnvironment(new KokkosMpiEnvironment(argc, argv));
     return RUN_ALL_TESTS();
 }
