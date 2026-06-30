@@ -1,11 +1,10 @@
 # Basic single species example with small grid
 driver:
   start_time: "2010-01-01T00:00:00"
-  end_time: "2010-01-01T01:00:00"
+  end_time: "2010-01-01T23:00:00"
   timestep_seconds: 3600
   grid:
-    nx: 72
-    ny: 46
+    grid_name: "F180"
     lon_min: -180.0
     lon_max: 180.0
     lat_min: -90.0
