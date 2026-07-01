@@ -4,7 +4,7 @@ driver:
   end_time: "2010-01-01T23:00:00"
   timestep_seconds: 3600
   grid:
-    grid_name: "F180"
+    grid_name: "F720"
     lon_min: -180.0
     lon_max: 180.0
     lat_min: -90.0
