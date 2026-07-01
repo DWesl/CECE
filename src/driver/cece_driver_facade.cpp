@@ -64,6 +64,8 @@ bool CeceDriverOrchestrator::AdvanceTime(const std::string& time_iso8601, void* 
         std::string input_file_path = "../scripts/data/MACCity_4x5.nc";  // default fallback
         std::string input_var_name = "MACCity";                          // default fallback
         std::string mapalgo = "consd";                                   // default fallback
+        std::string stream_data_model = "enhanced";                      // default AMIO data model
+        bool stream_data_model_explicit = false;
         if (config["cece_data"] && config["cece_data"]["streams"]) {
             for (const auto& stream : config["cece_data"]["streams"]) {
                 bool found_var = false;
@@ -77,6 +79,22 @@ bool CeceDriverOrchestrator::AdvanceTime(const std::string& time_iso8601, void* 
                         }
                         if (stream["mapalgo"]) {
                             mapalgo = stream["mapalgo"].as<std::string>();
+                        }
+                        if (stream["data_model"]) {
+                            std::string requested_model = stream["data_model"].as<std::string>();
+                            std::transform(requested_model.begin(), requested_model.end(), requested_model.begin(),
+                                           [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+                            if (requested_model == "classic" || requested_model == "enhanced") {
+                                stream_data_model = requested_model;
+                                stream_data_model_explicit = true;
+                            } else if (requested_model == "auto") {
+                                stream_data_model = "enhanced";
+                                stream_data_model_explicit = false;
+                            } else {
+                                std::cout << "[DRIVER WARNING] Invalid stream data_model='" << requested_model
+                                          << "' for stream variable '" << var_name
+                                          << "'; using default auto behavior (enhanced then classic fallback)." << std::endl;
+                            }
                         }
                         found_var = true;
                         break;
@@ -107,121 +125,133 @@ bool CeceDriverOrchestrator::AdvanceTime(const std::string& time_iso8601, void* 
             MPI_Comm_rank(comm_c_, &rank);
         }
 
-        if (rank == 0) {
-            // Write input manifest YAML (Rank 0 only to prevent parallel write conflicts)
-            std::ofstream m_file(read_manifest_path);
-            m_file << "backend: netcdf4\n"
-                   << "path: " << input_file_path << "\n"
-                   << "data_model: enhanced\n"
-                   << "staging_pool:\n"
-                   << "  buffer_count: 16\n"
-                   << "  buffer_capacity_bytes: 209715200\n"
-                   << "worker_pool:\n"
-                   << "  threads: 1\n"
-                   << "prefetch:\n"
-                   << "  depth: 4\n"
-                   << "  read_timeout_s: 60\n"
-                   << "staging_timeout_ms: 10000\n";
-            m_file.close();
-        }
-
-        // Wait for Rank 0 to finish writing the manifest before other ranks load it
-        if (mpi_initialized && comm_c_ != MPI_COMM_NULL) {
-            MPI_Barrier(comm_c_);
-        }
-
-        // Temporarily set parent communicator to MPI_COMM_SELF to force serial nc_open read fallback
-        // (which supports NetCDF-3 classic files and avoids parallel filesystem lock crashes on compute nodes)
-        if (mpi_initialized) {
-            amio_set_parent_communicator(MPI_Comm_c2f(MPI_COMM_SELF));
-        }
-
         amio_core_handle read_core = nullptr;
         amio_dataset_handle read_dataset = nullptr;
         amio_view_handle read_view = nullptr;
 
-        amio_status_t amio_rc = amio_init(read_manifest_path.c_str(), &read_core);
-        if (amio_rc != AMIO_OK) {
-            std::cout << "[DRIVER DEBUG] amio_init failed with rc = " << amio_rc << std::endl;
+        std::vector<std::string> data_models_to_try;
+        if (stream_data_model_explicit) {
+            data_models_to_try.push_back(stream_data_model);
         } else {
-            amio_rc = amio_open_dataset(read_core, read_manifest_path.c_str(), AMIO_MODE_READ, &read_dataset);
+            data_models_to_try.push_back("enhanced");
+            data_models_to_try.push_back("classic");
+        }
 
-            // Restore parent communicator to our parallel communicator for downstream output writer execution
+        amio_status_t amio_rc = AMIO_ERR_BACKEND_FAILURE;
+        std::string active_data_model = data_models_to_try.front();
+
+        for (const auto& candidate_model : data_models_to_try) {
+            active_data_model = candidate_model;
+
+            if (rank == 0) {
+                // Write input manifest YAML (Rank 0 only to prevent parallel write conflicts)
+                std::ofstream m_file(read_manifest_path);
+                m_file << "backend: netcdf4\n"
+                       << "path: " << input_file_path << "\n"
+                       << "data_model: " << candidate_model << "\n"
+                       << "staging_pool:\n"
+                       << "  buffer_count: 16\n"
+                       << "  buffer_capacity_bytes: 209715200\n"
+                       << "worker_pool:\n"
+                       << "  threads: 1\n"
+                       << "prefetch:\n"
+                       << "  depth: 4\n"
+                       << "  read_timeout_s: 60\n"
+                       << "staging_timeout_ms: 10000\n";
+                m_file.close();
+            }
+
+            // Wait for Rank 0 to finish writing the manifest before other ranks load it.
+            if (mpi_initialized && comm_c_ != MPI_COMM_NULL) {
+                MPI_Barrier(comm_c_);
+            }
+
+            // Temporarily force serial nc_open read fallback to improve portability.
+            if (mpi_initialized) {
+                amio_set_parent_communicator(MPI_Comm_c2f(MPI_COMM_SELF));
+            }
+
+            amio_rc = amio_init(read_manifest_path.c_str(), &read_core);
+            if (amio_rc == AMIO_OK) {
+                amio_rc = amio_open_dataset(read_core, read_manifest_path.c_str(), AMIO_MODE_READ, &read_dataset);
+            }
+
+            // Restore parent communicator for downstream operations.
             if (mpi_initialized && comm_c_ != MPI_COMM_NULL) {
                 amio_set_parent_communicator(MPI_Comm_c2f(comm_c_));
             }
 
-            if (amio_rc != AMIO_OK) {
-                std::cout << "[DRIVER DEBUG] amio_open_dataset failed for " << input_file_path << " with rc = " << amio_rc << std::endl;
-            } else {
-                // 1. Read 'lon' coordinates dynamically from this file
-                std::vector<double> src_lons;
-                amio_view_handle lon_check_view = nullptr;
-                amio_status_t lon_rc = amio_read(read_dataset, "lon", 0, nullptr, &lon_check_view);
-                if (lon_rc == AMIO_OK) {
-                    const void* lon_data = nullptr;
-                    size_t lon_size = 0;
-                    if (amio_view_data(lon_check_view, &lon_data, &lon_size) == AMIO_OK) {
-                        amio_shape_t lon_shape{};
-                        if (amio_view_shape(lon_check_view, &lon_shape) == AMIO_OK && lon_shape.rank > 0) {
-                            int lon_len = static_cast<int>(lon_shape.extents[0]);
-                            src_lons.resize(lon_len);
-                            bool is_lon_float = (lon_size == static_cast<size_t>(lon_len) * 4);
-                            for (int i = 0; i < lon_len; ++i) {
-                                src_lons[i] = is_lon_float ? static_cast<const float*>(lon_data)[i] : static_cast<const double*>(lon_data)[i];
-                            }
-                        }
-                    }
-                    amio_release_view(lon_check_view);
+            if (amio_rc == AMIO_OK) {
+                break;
+            }
+
+            std::cout << "[DRIVER DEBUG] AMIO open attempt failed (data_model='" << candidate_model << "') with rc = " << amio_rc << " ("
+                      << amio_strerror(amio_rc) << ")" << std::endl;
+
+            if (read_dataset) {
+                amio_close(read_dataset);
+                read_dataset = nullptr;
+            }
+            if (read_core) {
+                amio_finalize(read_core);
+                read_core = nullptr;
+            }
+        }
+
+        if (amio_rc != AMIO_OK) {
+            std::cout << "[DRIVER DEBUG] amio_open_dataset failed for " << input_file_path << " with rc = " << amio_rc << " ("
+                      << amio_strerror(amio_rc) << ") after trying data_model='" << active_data_model << "'" << std::endl;
+        } else {
+            if (!stream_data_model_explicit && active_data_model != "enhanced") {
+                std::cout << "[DRIVER INFO] AMIO read manifest auto-fell back to data_model='" << active_data_model << "' for " << input_file_path
+                          << std::endl;
+            }
+
+            // Determine this rank's contiguous destination latitude band [j0, j1)
+            // via a simple block decomposition of the ny_ destination rows.
+            int mpi_size = 1;
+            int mpi_rank = 0;
+            if (mpi_initialized && comm_c_ != MPI_COMM_NULL) {
+                MPI_Comm_size(comm_c_, &mpi_size);
+                MPI_Comm_rank(comm_c_, &mpi_rank);
+            }
+            const int band_base = ny_ / mpi_size;
+            const int band_rem = ny_ % mpi_size;
+            auto band_start = [&](int r) { return r * band_base + std::min(r, band_rem); };
+            const int j0 = band_start(mpi_rank);
+            const int j1 = band_start(mpi_rank + 1);
+
+            // 1. Determine total timesteps from the coordinate variable (time or date).
+            int file_nt = 1;
+            amio_view_handle time_check_view = nullptr;
+            amio_status_t time_rc = amio_read(read_dataset, "time", 0, nullptr, &time_check_view);
+            if (time_rc != AMIO_OK) {
+                time_rc = amio_read(read_dataset, "date", 0, nullptr, &time_check_view);
+            }
+            if (time_rc == AMIO_OK) {
+                amio_shape_t time_shape{};
+                if (amio_view_shape(time_check_view, &time_shape) == AMIO_OK && time_shape.rank > 0) {
+                    file_nt = static_cast<int>(time_shape.extents[0]);
+                }
+                amio_release_view(time_check_view);
+            }
+
+            // 2. Build (or reuse cached) interpolation weights for this rank's band.
+            //    Weights depend only on the grids, so they are generated once and
+            //    reused for every timestep.
+            auto plan_it = regrid_plans_.find(var_name);
+            if (plan_it == regrid_plans_.end() || !plan_it->second.built) {
+                cece::io::RegridPlan plan;
+                if (!cece::io::build_regrid_plan(read_dataset, nx_, ny_, target_lons_, target_lats_, mapalgo, j0, j1, plan)) {
+                    std::cout << "[DRIVER DEBUG] build_regrid_plan failed for '" << var_name << "'" << std::endl;
                 } else {
-                    std::cout << "[DRIVER DEBUG] amio_read('lon') failed with rc = " << lon_rc << std::endl;
+                    plan_it = regrid_plans_.emplace(var_name, std::move(plan)).first;
                 }
+            }
 
-                // 2. Read 'lat' coordinates dynamically from this file (handles flips automatically!)
-                std::vector<double> src_lats;
-                bool is_lat_flipped = false;
-                amio_view_handle lat_check_view = nullptr;
-                amio_status_t lat_rc = amio_read(read_dataset, "lat", 0, nullptr, &lat_check_view);
-                if (lat_rc == AMIO_OK) {
-                    const void* lat_data = nullptr;
-                    size_t lat_size = 0;
-                    if (amio_view_data(lat_check_view, &lat_data, &lat_size) == AMIO_OK) {
-                        amio_shape_t lat_shape{};
-                        if (amio_view_shape(lat_check_view, &lat_shape) == AMIO_OK && lat_shape.rank > 0) {
-                            int lat_len = static_cast<int>(lat_shape.extents[0]);
-                            src_lats.resize(lat_len);
-                            bool is_lat_float = (lat_size == static_cast<size_t>(lat_len) * 4);
-                            for (int i = 0; i < lat_len; ++i) {
-                                src_lats[i] = is_lat_float ? static_cast<const float*>(lat_data)[i] : static_cast<const double*>(lat_data)[i];
-                            }
-                            if (lat_len >= 2) {
-                                if (src_lats[0] > src_lats[1]) {
-                                    is_lat_flipped = true;
-                                }
-                            }
-                        }
-                    }
-                    amio_release_view(lat_check_view);
-                } else {
-                    std::cout << "[DRIVER DEBUG] amio_read('lat') failed with rc = " << lat_rc << std::endl;
-                }
-
-                // 3. Dynamically determine total timesteps from coordinate variables (time or date)
-                int file_nt = 1;
-                amio_view_handle time_check_view = nullptr;
-                amio_status_t time_rc = amio_read(read_dataset, "time", 0, nullptr, &time_check_view);
-                if (time_rc != AMIO_OK) {
-                    time_rc = amio_read(read_dataset, "date", 0, nullptr, &time_check_view);
-                }
-                if (time_rc == AMIO_OK) {
-                    amio_shape_t time_shape{};
-                    if (amio_view_shape(time_check_view, &time_shape) == AMIO_OK && time_shape.rank > 0) {
-                        file_nt = static_cast<int>(time_shape.extents[0]);
-                    }
-                    amio_release_view(time_check_view);
-                }
-
-                // 4. Now read the main variable
+            // 3. Read the main variable for this timestep and apply the cached weights.
+            if (plan_it != regrid_plans_.end() && plan_it->second.built) {
+                const cece::io::RegridPlan& plan = plan_it->second;
                 amio_rc = amio_read(read_dataset, input_var_name.c_str(), step_index_ % file_nt, nullptr, &read_view);
                 if (amio_rc == AMIO_OK) {
                     const void* view_data = nullptr;
@@ -245,12 +275,33 @@ bool CeceDriverOrchestrator::AdvanceTime(const std::string& time_iso8601, void* 
                                 time_offset = static_cast<size_t>(t_idx) * file_ny * file_nx;
                             }
 
-                            // Invoke conservative regridding utility
-                            read_success =
-                                cece::io::regrid_stream_field(read_dataset, input_var_name, step_index_, file_nt, time_offset, is_float, view_data,
-                                                              file_nx, file_ny, nx_, ny_, target_lons_, target_lats_, mapalgo, tide_view);
-                            if (!read_success) {
-                                std::cout << "[DRIVER DEBUG] regrid_stream_field returned false!" << std::endl;
+                            std::vector<double> local_dst;
+                            if (cece::io::apply_regrid_plan(plan, time_offset, is_float, view_data, file_nx, file_ny, nx_, local_dst)) {
+                                // Gather each rank's destination band into the full [nx_*ny_] field.
+                                std::vector<double> full_dst(static_cast<size_t>(nx_) * ny_, 0.0);
+                                if (mpi_initialized && mpi_size > 1 && comm_c_ != MPI_COMM_NULL) {
+                                    std::vector<int> counts(mpi_size), displs(mpi_size);
+                                    for (int r = 0; r < mpi_size; ++r) {
+                                        counts[r] = (band_start(r + 1) - band_start(r)) * nx_;
+                                        displs[r] = band_start(r) * nx_;
+                                    }
+                                    MPI_Allgatherv(local_dst.data(), counts[mpi_rank], MPI_DOUBLE, full_dst.data(), counts.data(), displs.data(),
+                                                   MPI_DOUBLE, comm_c_);
+                                } else {
+                                    std::copy(local_dst.begin(), local_dst.end(), full_dst.begin() + static_cast<size_t>(j0) * nx_);
+                                }
+
+                                // Populate the CECE field view (i, j, 0) from the full field.
+                                auto h_view = Kokkos::create_mirror_view(tide_view);
+                                for (int j = 0; j < ny_; ++j) {
+                                    for (int i = 0; i < nx_; ++i) {
+                                        h_view(i, j, 0) = full_dst[static_cast<size_t>(j) * nx_ + i];
+                                    }
+                                }
+                                Kokkos::deep_copy(tide_view, h_view);
+                                read_success = true;
+                            } else {
+                                std::cout << "[DRIVER DEBUG] apply_regrid_plan returned false!" << std::endl;
                             }
                         } else {
                             std::cout << "[DRIVER DEBUG] amio_view_shape failed!" << std::endl;
@@ -262,10 +313,10 @@ bool CeceDriverOrchestrator::AdvanceTime(const std::string& time_iso8601, void* 
                 } else {
                     std::cout << "[DRIVER DEBUG] amio_read('" << input_var_name << "') failed with rc = " << amio_rc << std::endl;
                 }
-                amio_close(read_dataset);
             }
-            amio_finalize(read_core);
+            amio_close(read_dataset);
         }
+        amio_finalize(read_core);
 
         // Wait for all ranks to finalize their AMIO sessions before deleting the manifest file
         if (mpi_initialized && comm_c_ != MPI_COMM_NULL) {

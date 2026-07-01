@@ -370,10 +370,14 @@ int CeceStandaloneWriter::WriteTimeStep(const std::unordered_map<std::string, Du
 
                 amio_shape_t field_shape;
                 std::memset(&field_shape, 0, sizeof(field_shape));
-                field_shape.rank = 3;
-                field_shape.extents[0] = nz_;
-                field_shape.extents[1] = ny_;
-                field_shape.extents[2] = nx_;
+                // Write with a leading (unlimited) time axis so per-timestep files
+                // form a proper CF time series: [time=1, lev, ny, nx]. The data
+                // layout is unchanged since the leading time extent is 1.
+                field_shape.rank = 4;
+                field_shape.extents[0] = 1;
+                field_shape.extents[1] = nz_;
+                field_shape.extents[2] = ny_;
+                field_shape.extents[3] = nx_;
 
                 amio_io_handle field_io = nullptr;
                 check_amio_rc(amio_write(dataset, name.c_str(), netcdf_buffer.data(), AMIO_DTYPE_F64, &field_shape, &field_io),

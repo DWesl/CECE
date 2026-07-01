@@ -4,6 +4,7 @@
 
 #include "cece/cece_regridder_utils.hpp"
 
+#include <algorithm>
 #include <cmath>
 #include <iostream>
 
@@ -28,11 +29,9 @@ axis::topology::UnstructuredMesh<Kokkos::HostSpace> build_axis_mesh(int ni, int 
     return grid.to_unstructured();
 }
 
-bool regrid_stream_field(amio_dataset_handle read_dataset, const std::string& input_var_name, int step_index, int file_nt, size_t time_offset,
-                         bool is_float, const void* view_data, int file_nx, int file_ny, int nx, int ny, const std::vector<double>& target_lons,
-                         const std::vector<double>& target_lats, const std::string& map_algo,
-                         Kokkos::View<double***, Kokkos::LayoutLeft, Kokkos::DefaultExecutionSpace>& tide_view) {
-    // 1. Read 'lon' coordinates dynamically from this file
+bool build_regrid_plan(amio_dataset_handle read_dataset, int nx, int ny, const std::vector<double>& target_lons,
+                       const std::vector<double>& target_lats, const std::string& map_algo, int j0, int j1, RegridPlan& plan) {
+    // 1. Read source 'lon' coordinates from the dataset.
     std::vector<double> src_lons;
     amio_view_handle lon_check_view = nullptr;
     if (amio_read(read_dataset, "lon", 0, nullptr, &lon_check_view) == AMIO_OK) {
@@ -52,9 +51,8 @@ bool regrid_stream_field(amio_dataset_handle read_dataset, const std::string& in
         amio_release_view(lon_check_view);
     }
 
-    // 2. Read 'lat' coordinates dynamically from this file (handles flips automatically!)
+    // 2. Read source 'lat' coordinates from the dataset.
     std::vector<double> src_lats;
-    bool is_lat_flipped = false;
     amio_view_handle lat_check_view = nullptr;
     if (amio_read(read_dataset, "lat", 0, nullptr, &lat_check_view) == AMIO_OK) {
         const void* lat_data = nullptr;
@@ -68,11 +66,6 @@ bool regrid_stream_field(amio_dataset_handle read_dataset, const std::string& in
                 for (int i = 0; i < lat_len; ++i) {
                     src_lats[i] = is_lat_float ? static_cast<const float*>(lat_data)[i] : static_cast<const double*>(lat_data)[i];
                 }
-                if (lat_len >= 2) {
-                    if (src_lats[0] > src_lats[1]) {
-                        is_lat_flipped = true;
-                    }
-                }
             }
         }
         amio_release_view(lat_check_view);
@@ -82,11 +75,25 @@ bool regrid_stream_field(amio_dataset_handle read_dataset, const std::string& in
         return false;
     }
 
-    // A. Build source and destination meshes
-    auto src_mesh = build_axis_mesh(file_nx, file_ny, src_lons, src_lats);
-    auto dst_mesh = build_axis_mesh(nx, ny, target_lons, target_lats);
+    plan.file_nx = static_cast<int>(src_lons.size());
+    plan.file_ny = static_cast<int>(src_lats.size());
+    plan.j0 = j0;
+    plan.j1 = j1;
 
-    // B. Configure weight generation method
+    const int nband = j1 - j0;
+    if (nband <= 0) {
+        // No destination rows assigned to this rank — nothing to build.
+        plan.built = true;
+        return true;
+    }
+
+    // A. Build the (global) source mesh and the rank-local destination sub-mesh.
+    auto src_mesh = build_axis_mesh(plan.file_nx, plan.file_ny, src_lons, src_lats);
+
+    std::vector<double> band_lats(target_lats.begin() + j0, target_lats.begin() + j1);
+    auto dst_mesh = build_axis_mesh(nx, nband, target_lons, band_lats);
+
+    // B. Configure weight generation method.
     axis::solver::RegridConfig regrid_cfg;
     regrid_cfg.method = axis::solver::InterpolationMethod::Conservative1stOrder;
     if (map_algo == "nearest" || map_algo == "near" || map_algo == "nn") {
@@ -103,35 +110,41 @@ bool regrid_stream_field(amio_dataset_handle read_dataset, const std::string& in
     regrid_cfg.norm_type = axis::solver::NormType::DstArea;
     regrid_cfg.unmapped = axis::solver::UnmappedAction::Ignore;
 
-    // C. Generate sparse weight matrix and convert to CSR for performance
-    auto matrix = axis::solver::WeightGenerator::generate<Kokkos::HostSpace>(src_mesh, dst_mesh, regrid_cfg);
-    matrix.to_csr();
+    // C. Generate the sparse weight matrix once and convert to CSR for fast apply.
+    plan.matrix = axis::solver::WeightGenerator::generate<Kokkos::HostSpace>(src_mesh, dst_mesh, regrid_cfg);
+    plan.matrix.to_csr();
+    plan.built = true;
+    return true;
+}
 
-    // D. Prepare source field view [file_nx * file_ny]
-    Kokkos::View<double*, Kokkos::HostSpace> src_field("src_field", file_nx * file_ny);
+bool apply_regrid_plan(const RegridPlan& plan, size_t time_offset, bool is_float, const void* view_data, int file_nx, int file_ny, int nx,
+                       std::vector<double>& local_dst) {
+    const int nband = plan.j1 - plan.j0;
+    local_dst.assign(static_cast<size_t>(nx) * std::max(nband, 0), 0.0);
+    if (nband <= 0) {
+        return true;  // No rows on this rank.
+    }
+
+    // D. Prepare the (global) source field view [file_nx * file_ny].
+    Kokkos::View<double*, Kokkos::HostSpace> src_field("src_field", static_cast<size_t>(file_nx) * file_ny);
     const float* float_data = static_cast<const float*>(view_data);
     const double* double_data = static_cast<const double*>(view_data);
     for (int j = 0; j < file_ny; ++j) {
         for (int i = 0; i < file_nx; ++i) {
             size_t src_idx = time_offset + static_cast<size_t>(j) * file_nx + i;
-            src_field(j * file_nx + i) = is_float ? static_cast<double>(float_data[src_idx]) : double_data[src_idx];
+            src_field(static_cast<size_t>(j) * file_nx + i) = is_float ? static_cast<double>(float_data[src_idx]) : double_data[src_idx];
         }
     }
 
-    // E. Apply weights to compute regridded destination field [nx * ny]
-    Kokkos::View<double*, Kokkos::HostSpace> dst_field("dst_field", nx * ny);
-    axis::field_view<const double, 1> src_view(src_field.data(), file_nx * file_ny);
-    axis::field_view<double, 1> dst_view(dst_field.data(), nx * ny);
-    axis::solver::apply(matrix, src_view, dst_view);
+    // E. Apply cached weights to produce the rank-local destination band [nx * nband].
+    Kokkos::View<double*, Kokkos::HostSpace> dst_field("dst_field", static_cast<size_t>(nx) * nband);
+    axis::field_view<const double, 1> src_view(src_field.data(), static_cast<size_t>(file_nx) * file_ny);
+    axis::field_view<double, 1> dst_view(dst_field.data(), static_cast<size_t>(nx) * nband);
+    axis::solver::apply(plan.matrix, src_view, dst_view);
 
-    // F. Populate results into TIDE's view
-    auto h_view = Kokkos::create_mirror_view(tide_view);
-    for (int j = 0; j < ny; ++j) {
-        for (int i = 0; i < nx; ++i) {
-            h_view(i, j, 0) = dst_field(j * nx + i);
-        }
+    for (size_t k = 0; k < static_cast<size_t>(nx) * nband; ++k) {
+        local_dst[k] = dst_field(k);
     }
-    Kokkos::deep_copy(tide_view, h_view);
     return true;
 }
 
