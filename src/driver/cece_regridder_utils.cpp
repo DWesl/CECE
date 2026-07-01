@@ -77,6 +77,15 @@ bool build_regrid_plan(amio_dataset_handle read_dataset, int nx, int ny, const s
 
     plan.file_nx = static_cast<int>(src_lons.size());
     plan.file_ny = static_cast<int>(src_lats.size());
+
+    if (map_algo == "passthrough") {
+        if (nx != plan.file_nx || ny != plan.file_ny) {
+            std::cerr << "[DRIVER ERROR] passthrough regridding requested but grid dimensions do not match! "
+                      << "Source grid: " << plan.file_nx << "x" << plan.file_ny << ", Target grid: " << nx << "x" << ny << std::endl;
+            throw std::runtime_error("passthrough regridding dimension mismatch");
+        }
+    }
+
     plan.j0 = j0;
     plan.j1 = j1;
 
