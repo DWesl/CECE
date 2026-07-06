@@ -43,6 +43,14 @@ CeceDriverOrchestrator::CeceDriverOrchestrator(const std::string& config_file, i
 }
 
 CeceDriverOrchestrator::~CeceDriverOrchestrator() {
+    // Cleanly drain any in-flight pipeline tasks and release hijacked ranks
+    // before destroying the graph. Without this, tearing down the DAGR
+    // GraphOrchestrator while a task is still in flight races with the
+    // Event_Loop worker(s) and can segfault at teardown. shutdown() is
+    // idempotent and safe to call here.
+    if (dagr_) {
+        dagr_->shutdown();
+    }
     dagr_.reset();
     cece_io_.reset();
 }
@@ -157,7 +165,7 @@ bool CeceDriverOrchestrator::AdvanceTime(const std::string& time_iso8601, void* 
                        << "  buffer_count: 8\n"
                        << "  buffer_capacity_bytes: 268435456\n"
                        << "worker_pool:\n"
-                       << "  threads: 4\n"
+                       << "  threads: 1\n"
                        << "prefetch:\n"
                        << "  depth: 2\n"
                        << "  read_timeout_s: 120\n"
