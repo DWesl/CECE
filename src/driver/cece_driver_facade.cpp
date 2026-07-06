@@ -154,14 +154,14 @@ bool CeceDriverOrchestrator::AdvanceTime(const std::string& time_iso8601, void* 
                        << "path: " << input_file_path << "\n"
                        << "data_model: " << candidate_model << "\n"
                        << "staging_pool:\n"
-                       << "  buffer_count: 16\n"
-                       << "  buffer_capacity_bytes: 209715200\n"
+                       << "  buffer_count: 8\n"
+                       << "  buffer_capacity_bytes: 268435456\n"
                        << "worker_pool:\n"
-                       << "  threads: 1\n"
+                       << "  threads: 4\n"
                        << "prefetch:\n"
-                       << "  depth: 4\n"
-                       << "  read_timeout_s: 60\n"
-                       << "staging_timeout_ms: 10000\n";
+                       << "  depth: 2\n"
+                       << "  read_timeout_s: 120\n"
+                       << "staging_timeout_ms: 30000\n";
                 m_file.close();
             }
 
@@ -257,7 +257,14 @@ bool CeceDriverOrchestrator::AdvanceTime(const std::string& time_iso8601, void* 
             // 3. Read the main variable for this timestep and apply the cached weights.
             if (plan_it != regrid_plans_.end() && plan_it->second.built) {
                 const cece::io::RegridPlan& plan = plan_it->second;
-                amio_rc = amio_read(read_dataset, input_var_name.c_str(), step_index_ % file_nt, nullptr, &read_view);
+                const int t_idx = (file_nt > 0) ? (step_index_ % file_nt) : 0;
+
+                // Read only the requested timestep. The AMIO netCDF backend detects
+                // the CF time dimension and reads a single [lat, lon] slab (count[0]=1),
+                // so we never stage the whole (time, lat, lon) variable. This keeps each
+                // read to ny*nx elements even for long, high-resolution sub-daily
+                // datasets (e.g. CAMS-TEMPO hourly), avoiding staging-pool exhaustion.
+                amio_rc = amio_read(read_dataset, input_var_name.c_str(), t_idx, nullptr, &read_view);
                 if (amio_rc == AMIO_OK) {
                     const void* view_data = nullptr;
                     size_t view_size = 0;
@@ -274,10 +281,17 @@ bool CeceDriverOrchestrator::AdvanceTime(const std::string& time_iso8601, void* 
                             }
                             bool is_float = (view_size == total_elements * 4);
 
+                            // Determine the offset of the requested timestep within the
+                            // returned view. amio_read() is asked for a single timestep, so
+                            // the view normally contains just one 2D slice (offset 0). We
+                            // stay robust to a backend that returns the whole variable by
+                            // checking how many spatial slices the view actually holds.
+                            const size_t spatial = static_cast<size_t>(file_ny) * file_nx;
+                            const size_t slices_in_view = (spatial > 0) ? (total_elements / spatial) : 1;
                             size_t time_offset = 0;
-                            if (read_shape.rank == 3) {
-                                int t_idx = step_index_ % file_nt;
-                                time_offset = static_cast<size_t>(t_idx) * file_ny * file_nx;
+                            if (slices_in_view > 1) {
+                                const int t_idx = step_index_ % file_nt;
+                                time_offset = static_cast<size_t>(t_idx) * spatial;
                             }
 
                             std::vector<double> local_dst;

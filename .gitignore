@@ -44,3 +44,4 @@ __pycache__/
 # ---------- CECE runtime-generated AMIO manifests ----------
 amio_read_manifest_facade_*.yaml
 amio_coord_manifest.yaml
+core.*
