@@ -13,6 +13,7 @@
 #include <tick/tick.hpp>
 #include <vector>
 
+#include "cece/cece_fatal.hpp"
 #include "cece/cece_helm_graph.hpp"
 #include "cece/cece_internal.hpp"
 #include "cece/cece_regridder_utils.hpp"
@@ -107,13 +108,16 @@ bool CeceDriverOrchestrator::AdvanceTime(const std::string& time_iso8601, void* 
         // Verify if the input file path exists and is accessible from this compute/login node
         std::error_code fs_ec;
         if (!fs::exists(input_file_path, fs_ec)) {
-            std::cerr << "[DRIVER FATAL] File '" << input_file_path
-                      << "' does not exist or is unreadable on this node! (System error: " << fs_ec.message() << ")" << std::endl;
+            LogFatal("[DRIVER FATAL] File '" + input_file_path +
+                     "' does not exist or is unreadable on this node! (System error: " + fs_ec.message() + ")");
         } else {
             std::cout << "[DRIVER DEBUG] Input file '" << input_file_path << "' successfully verified on local filesystem." << std::endl;
         }
 
         bool read_success = false;
+        // Human-readable reason for the most recent read failure, propagated to
+        // the fatal error message so the underlying AMIO status reaches CECE.
+        std::string failure_detail;
 
         // Dynamically open and read using AMIO API
         std::string read_manifest_path = "amio_read_manifest_facade_" + var_name + ".yaml";
@@ -244,6 +248,7 @@ bool CeceDriverOrchestrator::AdvanceTime(const std::string& time_iso8601, void* 
                 cece::io::RegridPlan plan;
                 if (!cece::io::build_regrid_plan(read_dataset, nx_, ny_, target_lons_, target_lats_, mapalgo, j0, j1, plan)) {
                     std::cout << "[DRIVER DEBUG] build_regrid_plan failed for '" << var_name << "'" << std::endl;
+                    failure_detail = "regrid plan construction failed (could not read source grid coordinates)";
                 } else {
                     plan_it = regrid_plans_.emplace(var_name, std::move(plan)).first;
                 }
@@ -302,16 +307,21 @@ bool CeceDriverOrchestrator::AdvanceTime(const std::string& time_iso8601, void* 
                                 read_success = true;
                             } else {
                                 std::cout << "[DRIVER DEBUG] apply_regrid_plan returned false!" << std::endl;
+                                failure_detail = "regrid weight application failed";
                             }
                         } else {
                             std::cout << "[DRIVER DEBUG] amio_view_shape failed!" << std::endl;
+                            failure_detail = "amio_view_shape failed";
                         }
                     } else {
                         std::cout << "[DRIVER DEBUG] amio_view_data failed with rc = " << amio_rc << std::endl;
+                        failure_detail = std::string("amio_view_data failed: rc=") + std::to_string(amio_rc) + " (" + amio_strerror(amio_rc) + ")";
                     }
                     amio_release_view(read_view);
                 } else {
                     std::cout << "[DRIVER DEBUG] amio_read('" << input_var_name << "') failed with rc = " << amio_rc << std::endl;
+                    failure_detail = std::string("amio_read('") + input_var_name + "') failed: rc=" + std::to_string(amio_rc) + " (" +
+                                     amio_strerror(amio_rc) + ")";
                 }
             }
             amio_close(read_dataset);
@@ -328,8 +338,10 @@ bool CeceDriverOrchestrator::AdvanceTime(const std::string& time_iso8601, void* 
 
         // Throw a fatal error on AMIO read failures
         if (!read_success) {
-            std::cerr << "[FATAL ERROR] AMIO read failed for field '" << var_name << "' in file '" << input_file_path
-                      << "'. Idealized fallback is disabled!" << std::endl;
+            std::string detail = failure_detail.empty() ? ("open/init failed: rc=" + std::to_string(amio_rc) + " (" + amio_strerror(amio_rc) + ")")
+                                                        : failure_detail;
+            LogFatal("[FATAL ERROR] AMIO read failed for field '" + var_name + "' in file '" + input_file_path + "'. Reason: " + detail +
+                     ". Idealized fallback is disabled!");
             return false;
         } else {
             std::cout << "[DRIVER DEBUG] AMIO read succeeded for field '" << var_name << "' - loaded real data from " << input_file_path << "!"

@@ -31,47 +31,57 @@ axis::topology::UnstructuredMesh<Kokkos::HostSpace> build_axis_mesh(int ni, int 
 
 bool build_regrid_plan(amio_dataset_handle read_dataset, int nx, int ny, const std::vector<double>& target_lons,
                        const std::vector<double>& target_lats, const std::string& map_algo, int j0, int j1, RegridPlan& plan) {
-    // 1. Read source 'lon' coordinates from the dataset.
-    std::vector<double> src_lons;
-    amio_view_handle lon_check_view = nullptr;
-    if (amio_read(read_dataset, "lon", 0, nullptr, &lon_check_view) == AMIO_OK) {
-        const void* lon_data = nullptr;
-        size_t lon_size = 0;
-        if (amio_view_data(lon_check_view, &lon_data, &lon_size) == AMIO_OK) {
-            amio_shape_t lon_shape{};
-            if (amio_view_shape(lon_check_view, &lon_shape) == AMIO_OK && lon_shape.rank > 0) {
-                int lon_len = static_cast<int>(lon_shape.extents[0]);
-                src_lons.resize(lon_len);
-                bool is_lon_float = (lon_size == static_cast<size_t>(lon_len) * 4);
-                for (int i = 0; i < lon_len; ++i) {
-                    src_lons[i] = is_lon_float ? static_cast<const float*>(lon_data)[i] : static_cast<const double*>(lon_data)[i];
+    // Read a 1-D coordinate variable, trying several common naming conventions
+    // (e.g. HTAP uses "lon"/"lat" while CAMS-TEMPO uses "longitude"/"latitude").
+    auto read_coord = [&](const std::vector<std::string>& candidate_names, std::vector<double>& out) {
+        for (const auto& name : candidate_names) {
+            amio_view_handle view = nullptr;
+            if (amio_read(read_dataset, name.c_str(), 0, nullptr, &view) != AMIO_OK) {
+                continue;
+            }
+            const void* data = nullptr;
+            size_t size = 0;
+            if (amio_view_data(view, &data, &size) == AMIO_OK) {
+                amio_shape_t shape{};
+                if (amio_view_shape(view, &shape) == AMIO_OK && shape.rank > 0) {
+                    int len = static_cast<int>(shape.extents[0]);
+                    out.resize(len);
+                    bool is_float = (size == static_cast<size_t>(len) * 4);
+                    for (int i = 0; i < len; ++i) {
+                        out[i] = is_float ? static_cast<const float*>(data)[i] : static_cast<const double*>(data)[i];
+                    }
                 }
             }
+            amio_release_view(view);
+            if (!out.empty()) {
+                return;
+            }
         }
-        amio_release_view(lon_check_view);
-    }
+    };
 
-    // 2. Read source 'lat' coordinates from the dataset.
+    // 1. Read source longitude coordinates. Candidate names cover common CF,
+    //    UGRID, and UFS/FV3/MPAS conventions.
+    //      - CF / generic:  lon, longitude, x, Longitude, LON
+    //      - UGRID mesh:    mesh_node_x, mesh2d_node_x, node_x
+    //      - UFS/FV3:       grid_xt, grid_lont, geolon, lon_rho, nav_lon
+    //      - MPAS:          lonCell
+    static const std::vector<std::string> kLonNames = {"lon",      "longitude",  "x",        "Longitude", "LON",     "geolon",
+                                                        "grid_xt",  "grid_lont",  "lon_rho",  "nav_lon",   "lonCell", "mesh_node_x",
+                                                        "mesh2d_node_x", "node_x", "XLONG"};
+    std::vector<double> src_lons;
+    read_coord(kLonNames, src_lons);
+
+    // 2. Read source latitude coordinates (same convention families as above).
+    static const std::vector<std::string> kLatNames = {"lat",      "latitude",   "y",        "Latitude", "LAT",     "geolat",
+                                                        "grid_yt",  "grid_latt",  "lat_rho",  "nav_lat",  "latCell", "mesh_node_y",
+                                                        "mesh2d_node_y", "node_y", "XLAT"};
     std::vector<double> src_lats;
-    amio_view_handle lat_check_view = nullptr;
-    if (amio_read(read_dataset, "lat", 0, nullptr, &lat_check_view) == AMIO_OK) {
-        const void* lat_data = nullptr;
-        size_t lat_size = 0;
-        if (amio_view_data(lat_check_view, &lat_data, &lat_size) == AMIO_OK) {
-            amio_shape_t lat_shape{};
-            if (amio_view_shape(lat_check_view, &lat_shape) == AMIO_OK && lat_shape.rank > 0) {
-                int lat_len = static_cast<int>(lat_shape.extents[0]);
-                src_lats.resize(lat_len);
-                bool is_lat_float = (lat_size == static_cast<size_t>(lat_len) * 4);
-                for (int i = 0; i < lat_len; ++i) {
-                    src_lats[i] = is_lat_float ? static_cast<const float*>(lat_data)[i] : static_cast<const double*>(lat_data)[i];
-                }
-            }
-        }
-        amio_release_view(lat_check_view);
-    }
+    read_coord(kLatNames, src_lats);
 
     if (src_lons.empty() || src_lats.empty()) {
+        std::cerr << "[DRIVER ERROR] build_regrid_plan: could not read source coordinates. Tried longitude names {"
+                  << "lon, longitude, x, geolon, grid_xt, grid_lont, lon_rho, nav_lon, lonCell, mesh_node_x, ...} and matching "
+                  << "latitude names. src_lons=" << src_lons.size() << ", src_lats=" << src_lats.size() << std::endl;
         return false;
     }
 

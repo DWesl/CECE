@@ -16,10 +16,12 @@
 #include <vector>
 
 #include "cece/cece_driver_facade.hpp"
+#include "cece/cece_fatal.hpp"
 
 // CECE Core C-Linkage Lifecycle functions
 extern "C" {
 void cece_set_config_file_path(const char* config_path, int path_len);
+void cece_run_log_setup(const char* config_path, int path_len);
 void cece_core_initialize_p1(void** data_ptr_ptr, int* rc);
 void cece_core_realize(void* data_ptr, int* rc);
 void cece_core_initialize_p2(void* data_ptr, int* nx, int* ny, int* nz, int* rc);
@@ -55,15 +57,16 @@ int main(int argc, char* argv[]) {
             config_file = argv[1];
         }
 
-        if (my_rank == 0) {
-            std::cout << "[DRIVER] Starting CECE-HELM standalone C++ driver with config: " << config_file << std::endl;
-        }
+        // --- Load configuration up front (grid, timing, streams parsed below) ---
+        YAML::Node config = YAML::LoadFile(config_file);
+
+        // Configure run logging (optional log file, per-rank stdout suppression)
+        // and print the startup banner. Shared with the NUOPC cap so behavior is
+        // identical regardless of how CECE is launched.
+        cece_run_log_setup(config_file.c_str(), static_cast<int>(config_file.length()));
 
         // Set config file path dynamically
         cece_set_config_file_path(config_file.c_str(), static_cast<int>(config_file.length()));
-
-        // --- Dynamic Config Parsing via yaml-cpp ---
-        YAML::Node config = YAML::LoadFile(config_file);
 
         // A. Grid Dimensions
         int nx = 4;
@@ -326,7 +329,10 @@ int main(int argc, char* argv[]) {
             // A. Let cece_driver handle all offline AMIO reading and AXIS regridding:
             cece_driver_advance_time(cece_driver_data, time_str.c_str(), static_cast<int>(time_str.length()), cece_data_ptr, &rc);
             if (rc != 0) {
-                std::cerr << "[DRIVER FATAL] cece_driver_advance_time failed to ingest data step - aborting simulation!" << std::endl;
+                // Emit on both the log (real stdout, all ranks) and stderr so the
+                // failure is never lost regardless of how output is captured.
+                cece::LogFatal("[DRIVER FATAL] (rank " + std::to_string(my_rank) +
+                               ") cece_driver_advance_time failed to ingest data step - aborting simulation!");
                 throw std::runtime_error("cece_driver_advance_time failed");
             }
 
