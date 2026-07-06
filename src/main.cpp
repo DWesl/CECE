@@ -84,7 +84,7 @@ int main(int argc, char* argv[]) {
             } else {
                 try {
                     auto parsed = axis::topology::NamedGridRegistry::parse(grid_name);
-                    if (parsed.family == 'F') {
+                    if (parsed.family == 'F' || parsed.family == 'R') {
                         int expected_nx = 4 * parsed.number;
                         int expected_ny = 2 * parsed.number;
 
@@ -101,9 +101,9 @@ int main(int argc, char* argv[]) {
                         nx = expected_nx;
                         ny = expected_ny;
                     } else {
-                        std::cerr
-                            << "ERROR: Only regular Gaussian grids (family 'F', e.g. 'F360') are currently supported as structured CECE target grids."
-                            << std::endl;
+                        std::cerr << "ERROR: Only regular Gaussian grids (family 'F', e.g. 'F360') and regular lat-lon grids (family 'R', e.g. "
+                                     "'R360') are currently supported as structured CECE target grids."
+                                  << std::endl;
                         return -1;
                     }
                 } catch (const std::exception& e) {
