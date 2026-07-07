@@ -150,7 +150,7 @@ struct CeceOutputConfig {
     std::vector<std::string> fields;                                              ///< Fields to write; empty means all export fields.
     bool include_diagnostics = false;                                             ///< Also write diagnostic fields when true.
     bool enabled = false;                                                         ///< True when an output block is present in the YAML.
-    int amio_worker_threads = 1;                                                 ///< Number of AMIO background I/O worker threads (default: 1).
+    int amio_worker_threads = -1;                                                ///< Number of AMIO background I/O worker threads (default: -1, meaning use fallback).
 };
 
 /**

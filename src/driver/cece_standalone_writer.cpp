@@ -208,6 +208,11 @@ int CeceStandaloneWriter::WriteTimeStep(const std::unordered_map<std::string, Du
                 time_units[t_pos] = ' ';
             }
 
+            int write_threads = config_.amio_worker_threads;
+            if (write_threads < 1) {
+                write_threads = 1;
+            }
+
             m_file << "backend: netcdf4\n"
                    << "path: " << filename << "\n"
                    << "data_model: enhanced\n"
@@ -215,7 +220,7 @@ int CeceStandaloneWriter::WriteTimeStep(const std::unordered_map<std::string, Du
                    << "  buffer_count: 16\n"
                    << "  buffer_capacity_bytes: 104857600\n"
                    << "worker_pool:\n"
-                   << "  threads: " << config_.amio_worker_threads << "\n"
+                   << "  threads: " << write_threads << "\n"
                    << "prefetch:\n"
                    << "  depth: 4\n"
                    << "  read_timeout_s: 60\n"

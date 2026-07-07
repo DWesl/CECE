@@ -374,7 +374,7 @@ physics_schemes:
     config = ParseConfig(test_config_file);
     EXPECT_EQ(config.output_config.amio_worker_threads, 1);
 
-    // 3. Verify omitted output values default to 1
+    // 3. Verify omitted output values default to -1 (representing fallback unset)
     WriteConfigFile(test_config_file, R"(
 output:
   enabled: true
@@ -395,7 +395,7 @@ physics_schemes:
     language: cpp
 )");
     config = ParseConfig(test_config_file);
-    EXPECT_EQ(config.output_config.amio_worker_threads, 1);
+    EXPECT_EQ(config.output_config.amio_worker_threads, -1);
 }
 
 // ---------------------------------------------------------------------------

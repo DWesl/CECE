@@ -318,6 +318,9 @@ bool CeceDriverOrchestrator::AdvanceTime(const std::string& time_iso8601, void* 
         int amio_threads = 1;
         if (config["driver"] && config["driver"]["amio_worker_threads"]) {
             amio_threads = config["driver"]["amio_worker_threads"].as<int>();
+            if (amio_threads < 1) {
+                amio_threads = 1;
+            }
         }
 
         for (const auto& candidate_model : data_models_to_try) {
