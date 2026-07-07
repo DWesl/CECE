@@ -215,7 +215,7 @@ int CeceStandaloneWriter::WriteTimeStep(const std::unordered_map<std::string, Du
                    << "  buffer_count: 16\n"
                    << "  buffer_capacity_bytes: 104857600\n"
                    << "worker_pool:\n"
-                   << "  threads: 1\n"
+                   << "  threads: " << config_.amio_worker_threads << "\n"
                    << "prefetch:\n"
                    << "  depth: 4\n"
                    << "  read_timeout_s: 60\n"

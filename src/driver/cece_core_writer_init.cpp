@@ -55,7 +55,9 @@ void cece_core_writer_initialize_with_coords(void* data_ptr, int nx, int ny, int
         auto* internal_data = static_cast<cece::CeceInternalData*>(data_ptr);
 
         if (!g_standalone_writer) {
-            g_standalone_writer = std::make_unique<cece::CeceStandaloneWriter>(internal_data->config.output_config);
+            auto output_config = internal_data->config.output_config;
+            output_config.amio_worker_threads = internal_data->config.driver_config.amio_worker_threads;
+            g_standalone_writer = std::make_unique<cece::CeceStandaloneWriter>(output_config);
             std::atexit([]() { g_standalone_writer.reset(); });
         }
 
@@ -121,7 +123,9 @@ void cece_core_writer_initialize(void* data_ptr, int nx, int ny, int nz, const c
         auto* internal_data = static_cast<cece::CeceInternalData*>(data_ptr);
 
         if (!g_standalone_writer) {
-            g_standalone_writer = std::make_unique<cece::CeceStandaloneWriter>(internal_data->config.output_config);
+            auto output_config = internal_data->config.output_config;
+            output_config.amio_worker_threads = internal_data->config.driver_config.amio_worker_threads;
+            g_standalone_writer = std::make_unique<cece::CeceStandaloneWriter>(output_config);
             std::atexit([]() { g_standalone_writer.reset(); });
         }
 
