@@ -396,19 +396,35 @@ bool CeceDriverOrchestrator::AdvanceTime(const std::string& time_iso8601, void* 
             const int j0 = band_start(mpi_rank);
             const int j1 = band_start(mpi_rank + 1);
 
-            // 1. Determine total timesteps from the coordinate variable (time or date).
+            // 1. Determine total timesteps from the input variable.
+            //    Since AMIO doesn't expose a public function to query total timesteps,
+            //    we use a binary search with amio_read on the input variable to identify
+            //    the actual record limit (since reads beyond the record limit return AMIO_ERR_INVALID_INPUT).
+            //    We cache the result in file_nt_cache_ to avoid binary search overhead on subsequent steps.
             int file_nt = 1;
-            amio_view_handle time_check_view = nullptr;
-            amio_status_t time_rc = amio_read(read_dataset, "time", 0, nullptr, &time_check_view);
-            if (time_rc != AMIO_OK) {
-                time_rc = amio_read(read_dataset, "date", 0, nullptr, &time_check_view);
-            }
-            if (time_rc == AMIO_OK) {
-                amio_shape_t time_shape{};
-                if (amio_view_shape(time_check_view, &time_shape) == AMIO_OK && time_shape.rank > 0) {
-                    file_nt = static_cast<int>(time_shape.extents[0]);
+            auto nt_it = file_nt_cache_.find(var_name);
+            if (nt_it != file_nt_cache_.end()) {
+                file_nt = nt_it->second;
+            } else {
+                if (!input_var_name.empty()) {
+                    int low = 1;
+                    int high = 1000000;
+                    int found_nt = 1;
+                    while (low <= high) {
+                        int mid = low + (high - low) / 2;
+                        amio_view_handle v = nullptr;
+                        amio_status_t rc = amio_read(read_dataset, input_var_name.c_str(), mid, nullptr, &v);
+                        if (rc == AMIO_OK) {
+                            amio_release_view(v);
+                            found_nt = mid + 1;
+                            low = mid + 1;
+                        } else {
+                            high = mid - 1;
+                        }
+                    }
+                    file_nt = found_nt;
                 }
-                amio_release_view(time_check_view);
+                file_nt_cache_[var_name] = file_nt;
             }
 
             // 2. Build (or reuse cached) interpolation weights for this rank's band.
