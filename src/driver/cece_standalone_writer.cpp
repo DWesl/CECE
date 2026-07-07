@@ -90,7 +90,8 @@ void check_amio_rc(amio_status_t status, const std::string& context) {
 
 }  // namespace
 
-CeceStandaloneWriter::CeceStandaloneWriter(const CeceOutputConfig& config) : config_(config) {}
+CeceStandaloneWriter::CeceStandaloneWriter(const CeceOutputConfig& config, MPI_Comm comm)
+    : config_(config), initialized_(false), use_custom_coords_(false), nx_(0), ny_(0), nz_(0), comm_(comm) {}
 
 CeceStandaloneWriter::~CeceStandaloneWriter() {
     Finalize();
@@ -184,7 +185,7 @@ int CeceStandaloneWriter::WriteTimeStep(const std::unordered_map<std::string, Du
     int mpi_initialized = 0;
     MPI_Initialized(&mpi_initialized);
     if (mpi_initialized) {
-        MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+        MPI_Comm_rank(comm_, &rank);
     }
 
     if (rank != 0) {
