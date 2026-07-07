@@ -64,8 +64,11 @@ void cece_core_writer_initialize_with_coords(void* data_ptr, int nx, int ny, int
             MPI_Comm comm = MPI_COMM_SELF;
             int mpi_initialized = 0;
             MPI_Initialized(&mpi_initialized);
-            if (mpi_initialized && mpi_comm_f != 0) {
-                comm = MPI_Comm_f2c(static_cast<MPI_Fint>(mpi_comm_f));
+            if (mpi_initialized) {
+                MPI_Comm temp_comm = MPI_Comm_f2c(static_cast<MPI_Fint>(mpi_comm_f));
+                if (temp_comm != MPI_COMM_NULL) {
+                    comm = temp_comm;
+                }
             }
             g_standalone_writer = std::make_unique<cece::CeceStandaloneWriter>(output_config, comm);
             std::atexit([]() { g_standalone_writer.reset(); });
@@ -141,8 +144,11 @@ void cece_core_writer_initialize(void* data_ptr, int nx, int ny, int nz, const c
             MPI_Comm comm = MPI_COMM_SELF;
             int mpi_initialized = 0;
             MPI_Initialized(&mpi_initialized);
-            if (mpi_initialized && mpi_comm_f != 0) {
-                comm = MPI_Comm_f2c(static_cast<MPI_Fint>(mpi_comm_f));
+            if (mpi_initialized) {
+                MPI_Comm temp_comm = MPI_Comm_f2c(static_cast<MPI_Fint>(mpi_comm_f));
+                if (temp_comm != MPI_COMM_NULL) {
+                    comm = temp_comm;
+                }
             }
             g_standalone_writer = std::make_unique<cece::CeceStandaloneWriter>(output_config, comm);
             std::atexit([]() { g_standalone_writer.reset(); });

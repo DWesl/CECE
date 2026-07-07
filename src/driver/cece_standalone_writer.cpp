@@ -184,7 +184,7 @@ int CeceStandaloneWriter::WriteTimeStep(const std::unordered_map<std::string, Du
     int rank = 0;
     int mpi_initialized = 0;
     MPI_Initialized(&mpi_initialized);
-    if (mpi_initialized) {
+    if (mpi_initialized && comm_ != MPI_COMM_NULL) {
         MPI_Comm_rank(comm_, &rank);
     }
 
