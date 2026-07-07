@@ -315,6 +315,11 @@ bool CeceDriverOrchestrator::AdvanceTime(const std::string& time_iso8601, void* 
         amio_status_t amio_rc = AMIO_ERR_BACKEND_FAILURE;
         std::string active_data_model = data_models_to_try.front();
 
+        int amio_threads = 1;
+        if (config["driver"] && config["driver"]["amio_worker_threads"]) {
+            amio_threads = config["driver"]["amio_worker_threads"].as<int>();
+        }
+
         for (const auto& candidate_model : data_models_to_try) {
             active_data_model = candidate_model;
 
@@ -328,7 +333,7 @@ bool CeceDriverOrchestrator::AdvanceTime(const std::string& time_iso8601, void* 
                        << "  buffer_count: 8\n"
                        << "  buffer_capacity_bytes: 268435456\n"
                        << "worker_pool:\n"
-                       << "  threads: 1\n"
+                       << "  threads: " << amio_threads << "\n"
                        << "prefetch:\n"
                        << "  depth: 2\n"
                        << "  read_timeout_s: 120\n"
