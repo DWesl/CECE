@@ -5,6 +5,7 @@
 
 #include <cstdlib>
 #include <iostream>
+#include <mpi.h>
 
 #include "cece/cece_internal.hpp"
 #include "cece/cece_standalone_writer.hpp"
@@ -27,10 +28,11 @@ extern "C" {
  * @param lat_coords Array of latitude coordinates (size ny).
  * @param start_time_iso8601 Start time in ISO 8601 format.
  * @param start_time_len Length of the start_time_iso8601 string.
+ * @param mpi_comm_f Fortran MPI communicator handle.
  * @param rc Return code (0 on success).
  */
 void cece_core_writer_initialize_with_coords(void* data_ptr, int nx, int ny, int nz, const double* lon_coords, const double* lat_coords,
-                                             const char* start_time_iso8601, int start_time_len, int* rc) {
+                                             const char* start_time_iso8601, int start_time_len, int mpi_comm_f, int* rc) {
     *rc = 0;
 
     if (data_ptr == nullptr) {
@@ -59,7 +61,13 @@ void cece_core_writer_initialize_with_coords(void* data_ptr, int nx, int ny, int
             if (output_config.amio_worker_threads == -1) {
                 output_config.amio_worker_threads = internal_data->config.driver_config.amio_worker_threads;
             }
-            g_standalone_writer = std::make_unique<cece::CeceStandaloneWriter>(output_config);
+            MPI_Comm comm = MPI_COMM_SELF;
+            int mpi_initialized = 0;
+            MPI_Initialized(&mpi_initialized);
+            if (mpi_initialized && mpi_comm_f != 0) {
+                comm = MPI_Comm_f2c(static_cast<MPI_Fint>(mpi_comm_f));
+            }
+            g_standalone_writer = std::make_unique<cece::CeceStandaloneWriter>(output_config, comm);
             std::atexit([]() { g_standalone_writer.reset(); });
         }
 
@@ -104,9 +112,10 @@ void cece_core_writer_initialize_with_coords(void* data_ptr, int nx, int ny, int
  * @param nz Grid dimension in Z.
  * @param start_time_iso8601 Start time in ISO 8601 format (e.g., "2020-01-01T00:00:00").
  * @param start_time_len Length of the start_time_iso8601 string.
+ * @param mpi_comm_f Fortran MPI communicator handle.
  * @param rc Return code (0 on success).
  */
-void cece_core_writer_initialize(void* data_ptr, int nx, int ny, int nz, const char* start_time_iso8601, int start_time_len, int* rc) {
+void cece_core_writer_initialize(void* data_ptr, int nx, int ny, int nz, const char* start_time_iso8601, int start_time_len, int mpi_comm_f, int* rc) {
     *rc = 0;
 
     if (data_ptr == nullptr) {
@@ -129,7 +138,13 @@ void cece_core_writer_initialize(void* data_ptr, int nx, int ny, int nz, const c
             if (output_config.amio_worker_threads == -1) {
                 output_config.amio_worker_threads = internal_data->config.driver_config.amio_worker_threads;
             }
-            g_standalone_writer = std::make_unique<cece::CeceStandaloneWriter>(output_config);
+            MPI_Comm comm = MPI_COMM_SELF;
+            int mpi_initialized = 0;
+            MPI_Initialized(&mpi_initialized);
+            if (mpi_initialized && mpi_comm_f != 0) {
+                comm = MPI_Comm_f2c(static_cast<MPI_Fint>(mpi_comm_f));
+            }
+            g_standalone_writer = std::make_unique<cece::CeceStandaloneWriter>(output_config, comm);
             std::atexit([]() { g_standalone_writer.reset(); });
         }
 
