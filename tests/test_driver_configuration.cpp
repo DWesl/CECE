@@ -258,6 +258,31 @@ species:
     EXPECT_EQ(config.driver_config.grid.nz, 72);
 }
 
+TEST_F(DriverConfigurationTest, ParseAmioWorkerThreads) {
+    // Write config with custom driver section and amio_worker_threads
+    WriteConfigFile(test_config_file, R"(
+driver:
+  start_time: "2010-01-01T00:00:00"
+  end_time: "2010-01-01T23:00:00"
+  timestep_seconds: 3600
+  amio_worker_threads: 4
+
+species:
+  CO:
+    - operation: add
+      field: CO_anthro
+      hierarchy: 0
+      scale: 1.0
+
+physics_schemes:
+  - name: NativeExample
+    language: cpp
+)");
+
+    CeceConfig config = ParseConfig(test_config_file);
+    EXPECT_EQ(config.driver_config.amio_worker_threads, 4);
+}
+
 // ---------------------------------------------------------------------------
 // Tests for Configuration Validation (Task 1.5)
 // ---------------------------------------------------------------------------

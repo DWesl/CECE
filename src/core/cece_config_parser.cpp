@@ -453,6 +453,9 @@ CeceConfig ParseConfig(const std::string& filename) {
         if (driver_node["stacking_refresh_interval_seconds"]) {
             config.driver_config.stacking_refresh_interval_seconds = driver_node["stacking_refresh_interval_seconds"].as<int>();
         }
+        if (driver_node["amio_worker_threads"]) {
+            config.driver_config.amio_worker_threads = driver_node["amio_worker_threads"].as<int>();
+        }
     }
 
     return config;
