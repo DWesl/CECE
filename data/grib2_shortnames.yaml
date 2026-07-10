@@ -486,3 +486,23 @@ PMTC:
   discipline: 0
   category: 20
   parameter: 0
+
+# ----------------------------------------------------------------------------
+# 11. GRIB2 Level Types Mapping (WMO Table 4.5)
+# ----------------------------------------------------------------------------
+levels:
+  surface: 1
+  cloud_base: 2
+  cloud_top: 3
+  isothermal: 4
+  tropopause: 7
+  max_wind: 6
+  isobaric: 100
+  mean_sea_level: 101
+  altitude_above_msl: 102
+  height_above_ground: 103
+  sigma: 104
+  hybrid: 105
+  depth_below_land: 106
+  entire_atmosphere: 200
+  planetary_boundary_layer: 220

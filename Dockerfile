@@ -98,6 +98,34 @@ RUN git clone --depth 1 -b v8.9.1 https://github.com/esmf-org/esmf.git /tmp/esmf
     && make install \
     && rm -rf /tmp/esmf
 
+# 7. Install JasPer and NCEPLIBS-g2c for GRIB2 support
+RUN apt-get update && apt-get install -y \
+    libpng-dev \
+    libjpeg-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN git clone --depth 1 --branch version-4.2.4 https://github.com/jasper-software/jasper.git /tmp/jasper-src \
+    && mkdir /tmp/jasper-build && cd /tmp/jasper-build \
+    && cmake /tmp/jasper-src -G"Ninja" \
+      -DCMAKE_INSTALL_PREFIX=/usr/local \
+      -DCMAKE_BUILD_TYPE=Release \
+      -DJAS_ENABLE_PROGRAMS=OFF \
+      -DJAS_ENABLE_DOC=OFF \
+      -DBUILD_TESTING=OFF \
+    && ninja -j$(nproc) && ninja install \
+    && rm -rf /tmp/jasper-src /tmp/jasper-build
+
+RUN git clone --depth 1 --branch v1.9.0 https://github.com/NOAA-EMC/NCEPLIBS-g2c.git /tmp/g2c-src \
+    && mkdir /tmp/g2c-build && cd /tmp/g2c-build \
+    && cmake /tmp/g2c-src -G"Ninja" \
+      -DCMAKE_INSTALL_PREFIX=/usr/local \
+      -DCMAKE_PREFIX_PATH=/usr/local \
+      -DCMAKE_BUILD_TYPE=Release \
+      -DBUILD_TESTING=OFF \
+    && ninja -j$(nproc) && ninja install \
+    && rm -rf /tmp/g2c-src /tmp/g2c-build \
+    && ldconfig
+
 # Set standard environment variables
 ENV ESMFMKFILE=/usr/local/lib/libO/Linux.gfortran.32.openmpi.default/esmf.mk
 ENV OMPI_ALLOW_RUN_AS_ROOT=1

@@ -191,7 +191,17 @@ int main(int argc, char* argv[]) {
 
             std::string read_manifest_path = "amio_coord_manifest.yaml";
             std::ofstream m_file_coords(read_manifest_path);
-            m_file_coords << "backend: netcdf4\n"
+
+            std::string backend = "netcdf4";
+            auto has_suffix = [](const std::string& str, const std::string& suffix) {
+                return str.size() >= suffix.size() && str.compare(str.size() - suffix.size(), suffix.size(), suffix) == 0;
+            };
+            if (has_suffix(input_file_path, ".grib") || has_suffix(input_file_path, ".grib2") || has_suffix(input_file_path, ".grb") ||
+                has_suffix(input_file_path, ".grb2")) {
+                backend = "grib2";
+            }
+
+            m_file_coords << "backend: " << backend << "\n"
                           << "path: " << input_file_path << "\n"
                           << "data_model: enhanced\n"
                           << "staging_pool:\n"

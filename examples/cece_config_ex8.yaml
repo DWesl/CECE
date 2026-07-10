@@ -1,0 +1,370 @@
+# Production GRIB2 GFS and Auxiliary Multi-Stream Configuration
+driver:
+  start_time: "2026-07-01T00:00:00"
+  end_time: "2026-07-01T01:00:00" # 1 hour GFS execution step
+  timestep_seconds: 3600
+  grid:
+    grid_name: "F96" # Official GFS 1.0 degree global grid (360 x 181)
+    nz: 2
+
+species:
+  dms_emissions:
+    - field: "dms_emissions"
+      operation: "add"
+  dust_emissions:
+    - field: "dust_emissions"
+      operation: "add"
+  ginoux_dust_emissions:
+    - field: "ginoux_dust_emissions"
+      operation: "add"
+  fengsha_dust_emissions:
+    - field: "fengsha_dust_emissions"
+      operation: "add"
+  k14_dust_emissions:
+    - field: "k14_dust_emissions"
+      operation: "add"
+  lightning_nox_emissions:
+    - field: "lightning_nox_emissions"
+      operation: "add"
+  soil_nox_emissions:
+    - field: "soil_nox_emissions"
+      operation: "add"
+  volcanic_so2:
+    - field: "volcanic_so2"
+      operation: "add"
+  isoprene_emissions:
+    - field: "isoprene_emissions"
+      operation: "add"
+  megan3_isop:
+    - field: "MEGAN_ISOP"
+      operation: "add"
+
+physics_schemes:
+  # 1. Marine DMS flux
+  - name: "dms"
+    language: "cpp"
+    options:
+      emission_factor: 1.0e-6
+      temperature_threshold: 273.15
+
+  # 2. Gong 2003 Sea Salt
+  - name: "sea_salt"
+    language: "cpp"
+    options:
+      r_sala_min: 0.01
+      r_sala_max: 0.5
+      r_salc_min: 0.5
+      r_salc_max: 10.0
+
+  # 3. Legacy Single-Bin Dust
+  - name: "dust"
+    language: "cpp"
+    options:
+      tuning_factor: 1.0
+      particle_density: 2.65
+      particle_diameter: 2.0e-6
+
+  # 4. GOCART2G Ginoux Dust
+  - name: "ginoux"
+    language: "cpp"
+    options:
+      ch_du: 1.0e-9
+      grav: 9.81
+      num_bins: 5
+      particle_radii: [0.1, 0.25, 0.5, 1.0, 2.5]
+
+  # 5. FENGSHA Dust
+  - name: "fengsha"
+    language: "cpp"
+    options:
+      alpha: 0.0001
+      gamma: 0.01
+      drylimit_factor: 1.0
+      num_bins: 5
+      particle_radii: [0.1, 0.25, 0.5, 1.0, 2.5]
+      bin_lower_edges: [0.05, 0.15, 0.35, 0.75, 1.75]
+      bin_upper_edges: [0.15, 0.35, 0.75, 1.75, 3.5]
+
+  # 6. Kok 2014 K14 Dust
+  - name: "k14"
+    language: "cpp"
+    options:
+      ch_du: 1.0e-9
+      num_bins: 5
+      particle_radii: [0.1, 0.25, 0.5, 1.0, 2.5]
+      bin_lower_edges: [0.05, 0.15, 0.35, 0.75, 1.75]
+      bin_upper_edges: [0.15, 0.35, 0.75, 1.75, 3.5]
+
+  # 7. MEGAN Single-Species Biogenic Isoprene
+  - name: "megan"
+    language: "cpp"
+    options:
+      beta: 0.13
+      ldf: 0.9996
+      aef: 1.0e-9
+      co2_concentration: 415.0
+
+  # 8. Soil BDSNP Module (runs first)
+  - name: "bdsnp"
+    language: "cpp"
+    options:
+      soil_no_method: "bdsnp"
+      fert_emission_factor: 1.0
+      wet_dep_scaling: 1.0
+      dry_dep_scaling: 1.0
+      pulse_decay_constant: 0.5
+    input_mapping:
+      soil_temperature: TSOIL
+      soil_moisture: GWETTOP
+      nitrogen_deposition: NDEP
+      land_use_type: LANDTYPE
+      leaf_area_index: LAI
+      biome_emission_factors: BIOME_EF
+    output_mapping:
+      soil_nox_emissions: SOIL_NO
+
+  # 9. MEGAN3 Biogenic Scheme (reads SOIL_NO)
+  - name: "megan3"
+    language: "cpp"
+    options:
+      mechanism_file: "data/speciation/spc_cb6.yaml"
+      speciation_file: "data/speciation/map_cb6.yaml"
+      speciation_dataset: "MEGAN"
+      co2_concentration: 415.0
+      co2_method: "possell"
+      enable_wind_stress: false
+      enable_temp_stress: false
+      enable_aq_stress: false
+      emission_classes:
+        ISOP:
+          ldf: 0.9996
+          ct1: 95.0
+          cleo: 2.0
+          beta: 0.13
+          anew: 0.05
+          agro: 0.6
+          amat: 1.0
+          aold: 0.9
+          default_aef: 1.0e-9
+        NO:
+          ldf: 0.00
+          ct1: 80.0
+          cleo: 1.83
+          beta: 0.10
+          anew: 1.0
+          agro: 1.0
+          amat: 1.0
+          aold: 1.0
+          default_aef: 0.0
+    input_mapping:
+      temperature: T2M
+      leaf_area_index: LAI
+      leaf_area_index_prev: LAI_PREV
+      par_direct: PARDR
+      par_diffuse: PARDF
+      solar_cosine: COSZS
+      soil_moisture_root: GWETROOT
+      wind_speed: U10M
+    output_mapping:
+      MEGAN_ISOP: MEGAN_ISOP
+
+  # 10. Lightning NOx
+  - name: "lightning"
+    language: "cpp"
+    options:
+      yield_land: 350.0
+      yield_ocean: 350.0
+
+  # 11. Empirical Soil NOx
+  - name: "soil_nox"
+    language: "cpp"
+    options:
+      temp_limit: 30.0
+      temp_exp_coeff: 0.103
+      wet_coeff_1: 5.5
+      wet_coeff_2: -5.55
+
+  # 12. Volcano Point Emissions
+  - name: "volcano"
+    language: "cpp"
+    options:
+      target_i: 180
+      target_j: 90
+      sulfur_emission: 100.0
+      elevation: 1000.0
+      cloud_top: 5000.0
+
+cece_data:
+  streams:
+    # Stream 1: Real NOAA GFS Meteorological Data in GRIB2 Format (Bilinear)
+    - name: "gfs_meteorology"
+      file: "data/gfs_data.grb2"
+      yearFirst: 2026
+      yearLast: 2026
+      yearAlign: 2026
+      taxmode: "limit"
+      tintalgo: "linear"
+      mapalgo: "bilinear" # Continuous states
+      variables:
+        - short_name: "TMP"
+          level: "2 m above ground"
+          model: "temperature"
+        - short_name: "TMP"
+          level: "2 m above ground"
+          model: "soil_temperature"
+        - short_name: "TMP"
+          level: "2 m above ground"
+          model: "tskin"
+        - short_name: "UGRD"
+          level: "10 m above ground"
+          model: "wind_speed"
+        - short_name: "UGRD"
+          level: "10 m above ground"
+          model: "u10m"
+        - short_name: "VGRD"
+          level: "10 m above ground"
+          model: "v10m"
+        - short_name: "LAND"
+          level: "surface"
+          model: "land_mask"
+        - short_name: "TMP"
+          level: "2 m above ground"
+          model: "TSOIL"
+        - short_name: "TMP"
+          level: "2 m above ground"
+          model: "T2M"
+        - short_name: "UGRD"
+          level: "10 m above ground"
+          model: "U10M"
+
+    # Stream 2: Aligned Continuous Auxiliary Fields (Bilinear)
+    - name: "auxiliary_continuous"
+      file: "data/physics_static_data.nc"
+      yearFirst: 2020
+      yearLast: 2020
+      yearAlign: 2026
+      taxmode: "cycle"
+      tintalgo: "linear"
+      mapalgo: "bilinear"
+      variables:
+        - file: "seawater_conc"
+          model: "seawater_conc"
+        - file: "soil_moisture"
+          model: "soil_moisture"
+        - file: "surface_soil_wetness"
+          model: "surface_soil_wetness"
+        - file: "soil_moisture_root"
+          model: "soil_moisture_root"
+        - file: "leaf_area_index"
+          model: "leaf_area_index"
+        - file: "leaf_area_index_prev"
+          model: "leaf_area_index_prev"
+        - file: "par_direct"
+          model: "par_direct"
+        - file: "par_diffuse"
+          model: "par_diffuse"
+        - file: "solar_cosine"
+          model: "solar_cosine"
+        - file: "friction_velocity"
+          model: "friction_velocity"
+        - file: "threshold_velocity"
+          model: "threshold_velocity"
+        - file: "air_density"
+          model: "air_density"
+        - file: "height"
+          model: "height"
+        - file: "cloud_top_height"
+          model: "cloud_top_height"
+        - file: "surface_altitude"
+          model: "surface_altitude"
+        - file: "layer_thickness"
+          model: "layer_thickness"
+        # Mapped names for bdsnp & megan3
+        - file: "soil_moisture"
+          model: "GWETTOP"
+        - file: "leaf_area_index"
+          model: "LAI"
+        - file: "leaf_area_index_prev"
+          model: "LAI_PREV"
+        - file: "par_direct"
+          model: "PARDR"
+        - file: "par_diffuse"
+          model: "PARDF"
+        - file: "solar_cosine"
+          model: "COSZS"
+        - file: "soil_moisture_root"
+          model: "GWETROOT"
+
+    # Stream 3: Aligned Categorical Auxiliary Fields and Masks (Nearest Neighbor)
+    - name: "auxiliary_categorical"
+      file: "data/physics_static_data.nc"
+      yearFirst: 2020
+      yearLast: 2020
+      yearAlign: 2026
+      taxmode: "cycle"
+      tintalgo: "linear"
+      mapalgo: "nn"
+      variables:
+        - file: "erodibility"
+          model: "erodibility"
+        - file: "dust_source"
+          model: "dust_source"
+        - file: "clay_fraction"
+          model: "clay_fraction"
+        - file: "sand_fraction"
+          model: "sand_fraction"
+        - file: "silt_fraction"
+          model: "silt_fraction"
+        - file: "drag_partition"
+          model: "drag_partition"
+        - file: "roughness_length"
+          model: "roughness_length"
+        - file: "soil_texture"
+          model: "soil_texture"
+        - file: "vegetation_type"
+          model: "vegetation_type"
+        - file: "vegetation_fraction"
+          model: "vegetation_fraction"
+        - file: "nitrogen_deposition"
+          model: "nitrogen_deposition"
+        - file: "land_use_type"
+          model: "land_use_type"
+        - file: "biome_emission_factors"
+          model: "biome_emission_factors"
+        # Specific maps
+        - file: "nitrogen_deposition"
+          model: "NDEP"
+        - file: "land_use_type"
+          model: "LANDTYPE"
+        - file: "biome_emission_factors"
+          model: "BIOME_EF"
+
+    # Stream 4: Extensive Base Anthropogenic Emissions (Conservative)
+    - name: "auxiliary_extensive"
+      file: "data/physics_static_data.nc"
+      yearFirst: 2020
+      yearLast: 2020
+      yearAlign: 2026
+      taxmode: "cycle"
+      tintalgo: "linear"
+      mapalgo: "consd"
+      variables:
+        - file: "base_anthropogenic_nox"
+          model: "base_anthropogenic_nox"
+
+output:
+  enabled: true
+  directory: ./cece_output
+  filename_pattern: "cece_physics_all_{YYYY}{MM}{DD}_{HH}{mm}{ss}.nc"
+  frequency_steps: 1
+  fields:
+    - dms_emissions
+    - dust_emissions
+    - ginoux_dust_emissions
+    - fengsha_dust_emissions
+    - k14_dust_emissions
+    - lightning_nox_emissions
+    - soil_nox_emissions
+    - volcanic_so2
+    - isoprene_emissions
+    - MEGAN_ISOP

@@ -20,6 +20,7 @@
 #include <yaml-cpp/yaml.h>
 
 #include <iostream>
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -287,6 +288,13 @@ CeceConfig ParseConfig(const std::string& filename) {
         config.cece_data.debug_level = data_node["debug_level"].as<int>();
     }
     if (data_node && data_node["streams"]) {
+        YAML::Node shortnames_node;
+        try {
+            shortnames_node = YAML::LoadFile("data/grib2_shortnames.yaml");
+        } catch (...) {
+            // Silently fall back to hardcoded mappings if file is not found/invalid
+        }
+
         for (auto const& stream_node : data_node["streams"]) {
             CeceDataStreamConfig stream;
             if (stream_node["name"]) {
@@ -315,6 +323,206 @@ CeceConfig ParseConfig(const std::string& filename) {
                         }
                         if (var_node["model"]) {
                             var.name_in_model = var_node["model"].as<std::string>();
+                        }
+
+                        // Enhanced human-readable GRIB2 parameter synthesis
+                        bool is_grib2_spec = false;
+                        int discipline = 0;
+                        int category = 0;
+                        int parameter = 0;
+                        int level_type = 103;  // height above ground by default
+                        int level_value = 0;
+
+                        if (var_node["discipline"]) {
+                            discipline = var_node["discipline"].as<int>();
+                            is_grib2_spec = true;
+                        }
+                        if (var_node["category"]) {
+                            category = var_node["category"].as<int>();
+                            is_grib2_spec = true;
+                        } else if (var_node["parameter_category"]) {
+                            category = var_node["parameter_category"].as<int>();
+                            is_grib2_spec = true;
+                        }
+                        if (var_node["parameter"]) {
+                            parameter = var_node["parameter"].as<int>();
+                            is_grib2_spec = true;
+                        } else if (var_node["parameter_number"]) {
+                            parameter = var_node["parameter_number"].as<int>();
+                            is_grib2_spec = true;
+                        }
+
+                        // Handle human-readable short_name lookup with dictionary fallback
+                        if (var_node["short_name"]) {
+                            std::string sname = var_node["short_name"].as<std::string>();
+                            is_grib2_spec = true;
+                            if (sname != "levels" && shortnames_node && shortnames_node[sname]) {
+                                auto match = shortnames_node[sname];
+                                if (match["discipline"]) discipline = match["discipline"].as<int>();
+                                if (match["category"]) category = match["category"].as<int>();
+                                if (match["parameter"]) parameter = match["parameter"].as<int>();
+                            } else {
+                                // Inline hardcoded fallback
+                                if (sname == "TMP" || sname == "TSOIL" || sname == "T2M") {
+                                    discipline = 0;
+                                    category = 0;
+                                    parameter = 0;
+                                } else if (sname == "UGRD" || sname == "U10M") {
+                                    discipline = 0;
+                                    category = 2;
+                                    parameter = 2;
+                                } else if (sname == "VGRD" || sname == "V10M") {
+                                    discipline = 0;
+                                    category = 2;
+                                    parameter = 3;
+                                } else if (sname == "GUST") {
+                                    discipline = 0;
+                                    category = 2;
+                                    parameter = 22;
+                                } else if (sname == "HGT") {
+                                    discipline = 0;
+                                    category = 3;
+                                    parameter = 5;
+                                } else if (sname == "PRES") {
+                                    discipline = 0;
+                                    category = 3;
+                                    parameter = 0;
+                                } else if (sname == "PRMSL") {
+                                    discipline = 0;
+                                    category = 3;
+                                    parameter = 1;
+                                } else if (sname == "RH") {
+                                    discipline = 0;
+                                    category = 1;
+                                    parameter = 1;
+                                } else if (sname == "SPFH") {
+                                    discipline = 0;
+                                    category = 1;
+                                    parameter = 0;
+                                } else if (sname == "LAND" || sname == "land_mask") {
+                                    discipline = 2;
+                                    category = 0;
+                                    parameter = 0;
+                                }
+                            }
+                        }
+
+                        // Parse Level metadata
+                        if (var_node["level"]) {
+                            std::string lvl = var_node["level"].as<std::string>();
+                            is_grib2_spec = true;
+                            if (lvl == "surface") {
+                                level_type = 1;
+                                level_value = 0;
+                            } else if (lvl.find("m above ground") != std::string::npos) {
+                                level_type = 103;
+                                std::stringstream ss(lvl);
+                                ss >> level_value;
+                            } else if (lvl.find("mb") != std::string::npos || lvl.find("hPa") != std::string::npos) {
+                                level_type = 100;
+                                std::stringstream ss(lvl);
+                                double val = 0;
+                                ss >> val;
+                                level_value = static_cast<int>(val * 100.0);
+                            } else if (lvl.find("Pa") != std::string::npos) {
+                                level_type = 100;
+                                std::stringstream ss(lvl);
+                                ss >> level_value;
+                            }
+                        }
+                        if (var_node["level_type"]) {
+                            std::string ltype_str = var_node["level_type"].as<std::string>();
+                            is_grib2_spec = true;
+                            if (shortnames_node && shortnames_node["levels"] && shortnames_node["levels"][ltype_str]) {
+                                level_type = shortnames_node["levels"][ltype_str].as<int>();
+                            } else {
+                                try {
+                                    level_type = std::stoi(ltype_str);
+                                } catch (...) {
+                                }
+                            }
+                        } else if (var_node["type_of_first_fixed_surface"]) {
+                            std::string ltype_str = var_node["type_of_first_fixed_surface"].as<std::string>();
+                            is_grib2_spec = true;
+                            if (shortnames_node && shortnames_node["levels"] && shortnames_node["levels"][ltype_str]) {
+                                level_type = shortnames_node["levels"][ltype_str].as<int>();
+                            } else {
+                                try {
+                                    level_type = std::stoi(ltype_str);
+                                } catch (...) {
+                                }
+                            }
+                        }
+                        if (var_node["level_value"]) {
+                            level_value = var_node["level_value"].as<int>();
+                            is_grib2_spec = true;
+                        } else if (var_node["scaled_value_first_surface"]) {
+                            level_value = var_node["scaled_value_first_surface"].as<int>();
+                            is_grib2_spec = true;
+                        }
+
+                        if (is_grib2_spec) {
+                            std::string synthesized = "d" + std::to_string(discipline) + "_c" + std::to_string(category) + "_n" +
+                                                      std::to_string(parameter) + "_s" + std::to_string(level_type) + "_l" +
+                                                      std::to_string(level_value);
+
+                            // Handle Aerosols/Chemical Suffixes (tricky segment parsing)
+                            int pdt_number = 0;
+                            if (var_node["pdt_number"])
+                                pdt_number = var_node["pdt_number"].as<int>();
+                            else if (var_node["pdt"])
+                                pdt_number = var_node["pdt"].as<int>();
+
+                            if (var_node["chemical_constituent_type"]) {
+                                int ct = var_node["chemical_constituent_type"].as<int>();
+                                synthesized += "_ct" + std::to_string(ct);
+                            } else if (var_node["chemical_constituent"]) {
+                                int ct = var_node["chemical_constituent"].as<int>();
+                                synthesized += "_ct" + std::to_string(ct);
+                            } else if (pdt_number == 40 && var_node["constituent"]) {
+                                int ct = var_node["constituent"].as<int>();
+                                synthesized += "_ct" + std::to_string(ct);
+                            }
+
+                            int aerosol_type = -1;
+                            if (var_node["aerosol_type"])
+                                aerosol_type = var_node["aerosol_type"].as<int>();
+                            else if (var_node["aerosol"])
+                                aerosol_type = var_node["aerosol"].as<int>();
+
+                            if (aerosol_type >= 0) {
+                                synthesized += "_at" + std::to_string(aerosol_type);
+                            }
+
+                            if (var_node["optical_property_type"]) {
+                                int op = var_node["optical_property_type"].as<int>();
+                                synthesized += "_op" + std::to_string(op);
+                            } else if (var_node["optical_property"]) {
+                                int op = var_node["optical_property"].as<int>();
+                                synthesized += "_op" + std::to_string(op);
+                            }
+
+                            if (var_node["wavelength_first_nm"] && var_node["wavelength_last_nm"]) {
+                                synthesized += "_wl" + var_node["wavelength_first_nm"].as<std::string>() + "_" +
+                                               var_node["wavelength_last_nm"].as<std::string>();
+                            } else if (var_node["wavelength_first"] && var_node["wavelength_last"]) {
+                                synthesized +=
+                                    "_wl" + var_node["wavelength_first"].as<std::string>() + "_" + var_node["wavelength_last"].as<std::string>();
+                            }
+
+                            if (var_node["ensemble_perturbation_number"]) {
+                                synthesized += "_ep" + var_node["ensemble_perturbation_number"].as<std::string>();
+                            } else if (var_node["ensemble_perturbation"]) {
+                                synthesized += "_ep" + var_node["ensemble_perturbation"].as<std::string>();
+                            }
+
+                            if (var_node["statistical_process"]) {
+                                synthesized += "_sp" + var_node["statistical_process"].as<std::string>();
+                            } else if (var_node["sp"]) {
+                                synthesized += "_sp" + var_node["sp"].as<std::string>();
+                            }
+
+                            var.name_in_file = synthesized;
                         }
                     }
                     stream.variables.push_back(var);

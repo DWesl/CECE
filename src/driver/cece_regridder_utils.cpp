@@ -97,6 +97,41 @@ bool build_regrid_plan(amio_dataset_handle read_dataset, int nx, int ny, const s
     read_coord(kLatNames, src_lats, lat_nx, lat_ny);
 
     if (src_lons.empty() || src_lats.empty()) {
+        static const std::vector<std::string> kDiagNames = {"d0_c0_n0_s103_l2",  "d0_c0_n0_s103_l1.5", "d0_c0_n0_s103_l10",
+                                                            "d0_c2_n2_s103_l10", "d0_c2_n3_s103_l10",  "d0_c0_n0_s100_l1000"};
+        for (const auto& name : kDiagNames) {
+            amio_view_handle view = nullptr;
+            if (amio_read(read_dataset, name.c_str(), 0, nullptr, &view) == AMIO_OK) {
+                amio_shape_t shape{};
+                if (amio_view_shape(view, &shape) == AMIO_OK && shape.rank >= 2) {
+                    int nj = static_cast<int>(shape.extents[shape.rank - 2]);
+                    int ni = static_cast<int>(shape.extents[shape.rank - 1]);
+                    if (ni > 0 && nj > 0) {
+                        src_lons.resize(ni);
+                        src_lats.resize(nj);
+                        double dlon = 360.0 / ni;
+                        double dlat = 180.0 / (nj - 1);
+                        for (int i = 0; i < ni; ++i) {
+                            src_lons[i] = dlon * i;
+                        }
+                        for (int j = 0; j < nj; ++j) {
+                            src_lats[j] = 90.0 - dlat * j;
+                        }
+                        lon_nx = ni;
+                        lon_ny = 1;
+                        lat_nx = nj;
+                        lat_ny = 1;
+                    }
+                }
+                amio_release_view(view);
+                if (!src_lons.empty()) {
+                    break;
+                }
+            }
+        }
+    }
+
+    if (src_lons.empty() || src_lats.empty()) {
         std::cerr << "[DRIVER ERROR] build_regrid_plan: could not read source coordinates. Tried longitude names {"
                   << "lon, longitude, x, geolon, grid_xt, grid_lont, lon_rho, nav_lon, lonCell, mesh_node_x, ...} and matching "
                   << "latitude names. src_lons=" << src_lons.size() << ", src_lats=" << src_lats.size() << std::endl;

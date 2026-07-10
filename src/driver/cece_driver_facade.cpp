@@ -10,6 +10,7 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <sstream>
 #include <string>
 #include <tick/tick.hpp>
 #include <vector>
@@ -215,6 +216,13 @@ bool CeceDriverOrchestrator::AdvanceTime(const std::string& time_iso8601, void* 
     // Load full config to parse streams
     YAML::Node config = YAML::LoadFile(config_file_);
 
+    YAML::Node shortnames_node;
+    try {
+        shortnames_node = YAML::LoadFile("data/grib2_shortnames.yaml");
+    } catch (...) {
+        // Silently ignore if not present
+    }
+
     // Parse the current simulation datetime once. Streams that declare a
     // temporal cadence (hourly/weekly/monthly) use these calendar fields to
     // select the correct file record; streams without a cadence keep the
@@ -244,6 +252,197 @@ bool CeceDriverOrchestrator::AdvanceTime(const std::string& time_iso8601, void* 
                         if (var["file"]) {
                             input_var_name = var["file"].as<std::string>();
                         }
+
+                        // Parse and synthesize human-readable GRIB2 descriptors
+                        bool is_grib2_spec = false;
+                        int discipline = 0;
+                        int category = 0;
+                        int parameter = 0;
+                        int level_type = 103;
+                        int level_value = 0;
+
+                        if (var["discipline"]) {
+                            discipline = var["discipline"].as<int>();
+                            is_grib2_spec = true;
+                        }
+                        if (var["category"]) {
+                            category = var["category"].as<int>();
+                            is_grib2_spec = true;
+                        } else if (var["parameter_category"]) {
+                            category = var["parameter_category"].as<int>();
+                            is_grib2_spec = true;
+                        }
+                        if (var["parameter"]) {
+                            parameter = var["parameter"].as<int>();
+                            is_grib2_spec = true;
+                        } else if (var["parameter_number"]) {
+                            parameter = var["parameter_number"].as<int>();
+                            is_grib2_spec = true;
+                        }
+
+                        if (var["short_name"]) {
+                            std::string sname = var["short_name"].as<std::string>();
+                            is_grib2_spec = true;
+                            if (sname != "levels" && shortnames_node && shortnames_node[sname]) {
+                                auto match = shortnames_node[sname];
+                                if (match["discipline"]) discipline = match["discipline"].as<int>();
+                                if (match["category"]) category = match["category"].as<int>();
+                                if (match["parameter"]) parameter = match["parameter"].as<int>();
+                            } else {
+                                if (sname == "TMP" || sname == "TSOIL" || sname == "T2M") {
+                                    discipline = 0;
+                                    category = 0;
+                                    parameter = 0;
+                                } else if (sname == "UGRD" || sname == "U10M") {
+                                    discipline = 0;
+                                    category = 2;
+                                    parameter = 2;
+                                } else if (sname == "VGRD" || sname == "V10M") {
+                                    discipline = 0;
+                                    category = 2;
+                                    parameter = 3;
+                                } else if (sname == "GUST") {
+                                    discipline = 0;
+                                    category = 2;
+                                    parameter = 22;
+                                } else if (sname == "HGT") {
+                                    discipline = 0;
+                                    category = 3;
+                                    parameter = 5;
+                                } else if (sname == "PRES") {
+                                    discipline = 0;
+                                    category = 3;
+                                    parameter = 0;
+                                } else if (sname == "PRMSL") {
+                                    discipline = 0;
+                                    category = 3;
+                                    parameter = 1;
+                                } else if (sname == "RH") {
+                                    discipline = 0;
+                                    category = 1;
+                                    parameter = 1;
+                                } else if (sname == "SPFH") {
+                                    discipline = 0;
+                                    category = 1;
+                                    parameter = 0;
+                                } else if (sname == "LAND" || sname == "land_mask") {
+                                    discipline = 2;
+                                    category = 0;
+                                    parameter = 0;
+                                }
+                            }
+                        }
+
+                        if (var["level"]) {
+                            std::string lvl = var["level"].as<std::string>();
+                            is_grib2_spec = true;
+                            if (lvl == "surface") {
+                                level_type = 1;
+                                level_value = 0;
+                            } else if (lvl.find("m above ground") != std::string::npos) {
+                                level_type = 103;
+                                std::stringstream ss(lvl);
+                                ss >> level_value;
+                            } else if (lvl.find("mb") != std::string::npos || lvl.find("hPa") != std::string::npos) {
+                                level_type = 100;
+                                std::stringstream ss(lvl);
+                                double val = 0;
+                                ss >> val;
+                                level_value = static_cast<int>(val * 100.0);
+                            } else if (lvl.find("Pa") != std::string::npos) {
+                                level_type = 100;
+                                std::stringstream ss(lvl);
+                                ss >> level_value;
+                            }
+                        }
+                        if (var["level_type"]) {
+                            std::string ltype_str = var["level_type"].as<std::string>();
+                            is_grib2_spec = true;
+                            if (shortnames_node && shortnames_node["levels"] && shortnames_node["levels"][ltype_str]) {
+                                level_type = shortnames_node["levels"][ltype_str].as<int>();
+                            } else {
+                                try {
+                                    level_type = std::stoi(ltype_str);
+                                } catch (...) {
+                                }
+                            }
+                        } else if (var["type_of_first_fixed_surface"]) {
+                            std::string ltype_str = var["type_of_first_fixed_surface"].as<std::string>();
+                            is_grib2_spec = true;
+                            if (shortnames_node && shortnames_node["levels"] && shortnames_node["levels"][ltype_str]) {
+                                level_type = shortnames_node["levels"][ltype_str].as<int>();
+                            } else {
+                                try {
+                                    level_type = std::stoi(ltype_str);
+                                } catch (...) {
+                                }
+                            }
+                        }
+                        if (var["level_value"]) {
+                            level_value = var["level_value"].as<int>();
+                            is_grib2_spec = true;
+                        } else if (var["scaled_value_first_surface"]) {
+                            level_value = var["scaled_value_first_surface"].as<int>();
+                            is_grib2_spec = true;
+                        }
+
+                        if (is_grib2_spec) {
+                            std::string synthesized = "d" + std::to_string(discipline) + "_c" + std::to_string(category) + "_n" +
+                                                      std::to_string(parameter) + "_s" + std::to_string(level_type) + "_l" +
+                                                      std::to_string(level_value);
+
+                            int pdt_number = 0;
+                            if (var["pdt_number"])
+                                pdt_number = var["pdt_number"].as<int>();
+                            else if (var["pdt"])
+                                pdt_number = var["pdt"].as<int>();
+
+                            if (var["chemical_constituent_type"]) {
+                                synthesized += "_ct" + var["chemical_constituent_type"].as<std::string>();
+                            } else if (var["chemical_constituent"]) {
+                                synthesized += "_ct" + var["chemical_constituent"].as<std::string>();
+                            } else if (pdt_number == 40 && var["constituent"]) {
+                                synthesized += "_ct" + var["constituent"].as<std::string>();
+                            }
+
+                            int aerosol_type = -1;
+                            if (var["aerosol_type"])
+                                aerosol_type = var["aerosol_type"].as<int>();
+                            else if (var["aerosol"])
+                                aerosol_type = var["aerosol"].as<int>();
+
+                            if (aerosol_type >= 0) {
+                                synthesized += "_at" + std::to_string(aerosol_type);
+                            }
+
+                            if (var["optical_property_type"]) {
+                                synthesized += "_op" + var["optical_property_type"].as<std::string>();
+                            } else if (var["optical_property"]) {
+                                synthesized += "_op" + var["optical_property"].as<std::string>();
+                            }
+
+                            if (var["wavelength_first_nm"] && var["wavelength_last_nm"]) {
+                                synthesized +=
+                                    "_wl" + var["wavelength_first_nm"].as<std::string>() + "_" + var["wavelength_last_nm"].as<std::string>();
+                            } else if (var["wavelength_first"] && var["wavelength_last"]) {
+                                synthesized += "_wl" + var["wavelength_first"].as<std::string>() + "_" + var["wavelength_last"].as<std::string>();
+                            }
+
+                            if (var["ensemble_perturbation_number"]) {
+                                synthesized += "_ep" + var["ensemble_perturbation_number"].as<std::string>();
+                            } else if (var["ensemble_perturbation"]) {
+                                synthesized += "_ep" + var["ensemble_perturbation"].as<std::string>();
+                            }
+
+                            if (var["statistical_process"]) {
+                                synthesized += "_sp" + var["statistical_process"].as<std::string>();
+                            } else if (var["sp"]) {
+                                synthesized += "_sp" + var["sp"].as<std::string>();
+                            }
+
+                            input_var_name = synthesized;
+                        }
+
                         if (stream["mapalgo"]) {
                             mapalgo = stream["mapalgo"].as<std::string>();
                         }
@@ -326,9 +525,19 @@ bool CeceDriverOrchestrator::AdvanceTime(const std::string& time_iso8601, void* 
             active_data_model = candidate_model;
 
             if (rank == 0) {
+                // Dynamically detect AMIO backend based on file suffix
+                std::string backend = "netcdf4";
+                auto has_suffix = [](const std::string& str, const std::string& suffix) {
+                    return str.size() >= suffix.size() && str.compare(str.size() - suffix.size(), suffix.size(), suffix) == 0;
+                };
+                if (has_suffix(input_file_path, ".grib") || has_suffix(input_file_path, ".grib2") || has_suffix(input_file_path, ".grb") ||
+                    has_suffix(input_file_path, ".grb2")) {
+                    backend = "grib2";
+                }
+
                 // Write input manifest YAML (Rank 0 only to prevent parallel write conflicts)
                 std::ofstream m_file(read_manifest_path);
-                m_file << "backend: netcdf4\n"
+                m_file << "backend: " << backend << "\n"
                        << "path: " << input_file_path << "\n"
                        << "data_model: " << candidate_model << "\n"
                        << "staging_pool:\n"

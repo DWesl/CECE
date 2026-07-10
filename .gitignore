@@ -45,3 +45,5 @@ __pycache__/
 amio_read_manifest_facade_*.yaml
 amio_coord_manifest.yaml
 core.*
+.superpowers/
+docs/superpowers/
