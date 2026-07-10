@@ -1,0 +1,488 @@
+# ============================================================================
+# GRIB2 Standard Shortname to WMO Product Codes Mapping Dictionary
+# ============================================================================
+# Maintained by CECE/Community Emissions Computing Engine.
+# Add or modify entries here to support any WMO-compliant or NOAA NCEP-specific
+# GRIB2 variables across atmospheric, land-surface, ocean, and chemistry datasets.
+#
+# Schema:
+#   <SHORTNAME>:
+#     discipline: <0-255>
+#     category: <0-255>
+#     parameter: <0-255>
+# ============================================================================
+
+# ----------------------------------------------------------------------------
+# 1. Temperature & Thermodynamics (Discipline 0, Category 0)
+# ----------------------------------------------------------------------------
+TMP:
+  discipline: 0
+  category: 0
+  parameter: 0
+
+T:
+  discipline: 0
+  category: 0
+  parameter: 0
+
+T2M:
+  discipline: 0
+  category: 0
+  parameter: 0
+
+TSOIL:
+  discipline: 0
+  category: 0
+  parameter: 0
+
+TSKIN:
+  discipline: 0
+  category: 0
+  parameter: 0
+
+SST:
+  discipline: 0
+  category: 0
+  parameter: 0
+
+POT:
+  discipline: 0
+  category: 0
+  parameter: 2
+
+THETA:
+  discipline: 0
+  category: 0
+  parameter: 2
+
+DPT:
+  discipline: 0
+  category: 0
+  parameter: 6
+
+TD:
+  discipline: 0
+  category: 0
+  parameter: 6
+
+MAXT:
+  discipline: 0
+  category: 0
+  parameter: 4
+
+MINT:
+  discipline: 0
+  category: 0
+  parameter: 5
+
+APTMP:
+  discipline: 0
+  category: 0
+  parameter: 18
+
+# ----------------------------------------------------------------------------
+# 2. Moisture, Clouds & Hydrology (Discipline 0, Category 1)
+# ----------------------------------------------------------------------------
+SPFH:
+  discipline: 0
+  category: 1
+  parameter: 0
+
+Q:
+  discipline: 0
+  category: 1
+  parameter: 0
+
+RH:
+  discipline: 0
+  category: 1
+  parameter: 1
+
+MIXR:
+  discipline: 0
+  category: 1
+  parameter: 2
+
+R:
+  discipline: 0
+  category: 1
+  parameter: 2
+
+PRATE:
+  discipline: 0
+  category: 1
+  parameter: 7
+
+RAIN:
+  discipline: 0
+  category: 1
+  parameter: 7
+
+APCP:
+  discipline: 0
+  category: 1
+  parameter: 8
+
+PRECIP:
+  discipline: 0
+  category: 1
+  parameter: 8
+
+SNOD:
+  discipline: 0
+  category: 1
+  parameter: 11
+
+SNOWD:
+  discipline: 0
+  category: 1
+  parameter: 11
+
+WEASD:
+  discipline: 0
+  category: 1
+  parameter: 13
+
+SNOWW:
+  discipline: 0
+  category: 1
+  parameter: 13
+
+CLWMR:
+  discipline: 0
+  category: 1
+  parameter: 22
+
+ICMR:
+  discipline: 0
+  category: 1
+  parameter: 23
+
+RWMR:
+  discipline: 0
+  category: 1
+  parameter: 24
+
+SNMR:
+  discipline: 0
+  category: 1
+  parameter: 25
+
+GRLE:
+  discipline: 0
+  category: 1
+  parameter: 32
+
+CICE:
+  discipline: 0
+  category: 1
+  parameter: 14
+
+PWAT:
+  discipline: 0
+  category: 1
+  parameter: 3
+
+# ----------------------------------------------------------------------------
+# 3. Wind, Dynamics & Momentum (Discipline 0, Category 2)
+# ----------------------------------------------------------------------------
+UGRD:
+  discipline: 0
+  category: 2
+  parameter: 2
+
+U:
+  discipline: 0
+  category: 2
+  parameter: 2
+
+U10M:
+  discipline: 0
+  category: 2
+  parameter: 2
+
+VGRD:
+  discipline: 0
+  category: 2
+  parameter: 3
+
+V:
+  discipline: 0
+  category: 2
+  parameter: 3
+
+V10M:
+  discipline: 0
+  category: 2
+  parameter: 3
+
+WIND:
+  discipline: 0
+  category: 2
+  parameter: 1
+
+WSPD:
+  discipline: 0
+  category: 2
+  parameter: 1
+
+WDIR:
+  discipline: 0
+  category: 2
+  parameter: 0
+
+GUST:
+  discipline: 0
+  category: 2
+  parameter: 22
+
+DZDT:
+  discipline: 0
+  category: 2
+  parameter: 8
+
+W:
+  discipline: 0
+  category: 2
+  parameter: 8
+
+VVEL:
+  discipline: 0
+  category: 2
+  parameter: 9
+
+USTAR:
+  discipline: 0
+  category: 2
+  parameter: 30
+
+FRICTV:
+  discipline: 0
+  category: 2
+  parameter: 30
+
+# ----------------------------------------------------------------------------
+# 4. Pressure & Height (Discipline 0, Category 3)
+# ----------------------------------------------------------------------------
+PRES:
+  discipline: 0
+  category: 3
+  parameter: 0
+
+P:
+  discipline: 0
+  category: 3
+  parameter: 0
+
+PRMSL:
+  discipline: 0
+  category: 3
+  parameter: 1
+
+SLP:
+  discipline: 0
+  category: 3
+  parameter: 1
+
+MSLET:
+  discipline: 0
+  category: 3
+  parameter: 2
+
+HGT:
+  discipline: 0
+  category: 3
+  parameter: 5
+
+Z:
+  discipline: 0
+  category: 3
+  parameter: 5
+
+# ----------------------------------------------------------------------------
+# 5. Shortwave & Longwave Radiation (Discipline 0, Categories 4 & 5)
+# ----------------------------------------------------------------------------
+DSWRF:
+  discipline: 0
+  category: 4
+  parameter: 7
+
+SWDOWN:
+  discipline: 0
+  category: 4
+  parameter: 7
+
+USWRF:
+  discipline: 0
+  category: 4
+  parameter: 8
+
+DLWRF:
+  discipline: 0
+  category: 5
+  parameter: 3
+
+LWDOWN:
+  discipline: 0
+  category: 5
+  parameter: 3
+
+ULWRF:
+  discipline: 0
+  category: 5
+  parameter: 4
+
+RAD:
+  discipline: 0
+  category: 4
+  parameter: 0
+
+# ----------------------------------------------------------------------------
+# 6. Clouds & Cloud Physics (Discipline 0, Category 6)
+# ----------------------------------------------------------------------------
+TCDC:
+  discipline: 0
+  category: 6
+  parameter: 1
+
+CLDTOT:
+  discipline: 0
+  category: 6
+  parameter: 1
+
+HCDC:
+  discipline: 0
+  category: 6
+  parameter: 5
+
+MCDC:
+  discipline: 0
+  category: 6
+  parameter: 4
+
+LCDC:
+  discipline: 0
+  category: 6
+  parameter: 3
+
+# ----------------------------------------------------------------------------
+# 7. Physical Properties & Surface Fields (Discipline 2, Category 0)
+# ----------------------------------------------------------------------------
+LAND:
+  discipline: 2
+  category: 0
+  parameter: 0
+
+LSM:
+  discipline: 2
+  category: 0
+  parameter: 0
+
+LANDMASK:
+  discipline: 2
+  category: 0
+  parameter: 0
+
+land_mask:
+  discipline: 2
+  category: 0
+  parameter: 0
+
+SFCR:
+  discipline: 2
+  category: 0
+  parameter: 1
+
+ROUGH:
+  discipline: 2
+  category: 0
+  parameter: 1
+
+ALBDO:
+  discipline: 0
+  category: 19
+  parameter: 1
+
+ALBEDO:
+  discipline: 0
+  category: 19
+  parameter: 1
+
+VEG:
+  discipline: 2
+  category: 0
+  parameter: 4
+
+VEGFRAC:
+  discipline: 2
+  category: 0
+  parameter: 4
+
+LAI:
+  discipline: 2
+  category: 0
+  parameter: 28
+
+# ----------------------------------------------------------------------------
+# 8. Soil & Vegetation (Discipline 2, Category 3)
+# ----------------------------------------------------------------------------
+SOILW:
+  discipline: 2
+  category: 3
+  parameter: 9
+
+SOILM:
+  discipline: 2
+  category: 3
+  parameter: 9
+
+# ----------------------------------------------------------------------------
+# 9. Energy & Heat Fluxes (Discipline 0, Category 0/1)
+# ----------------------------------------------------------------------------
+SHTFL:
+  discipline: 0
+  category: 0
+  parameter: 11
+
+SENSH:
+  discipline: 0
+  category: 0
+  parameter: 11
+
+LHTFL:
+  discipline: 0
+  category: 0
+  parameter: 10
+
+LATH:
+  discipline: 0
+  category: 0
+  parameter: 10
+
+# ----------------------------------------------------------------------------
+# 10. Atmospheric Chemistry & Aerosols (Discipline 0, Category 14 & 20)
+# ----------------------------------------------------------------------------
+O3MR:
+  discipline: 0
+  category: 14
+  parameter: 1
+
+AEROT:
+  discipline: 0
+  category: 20
+  parameter: 1
+
+AERAS:
+  discipline: 0
+  category: 20
+  parameter: 2
+
+AERSSA:
+  discipline: 0
+  category: 20
+  parameter: 3
+
+PMTC:
+  discipline: 0
+  category: 20
+  parameter: 0
