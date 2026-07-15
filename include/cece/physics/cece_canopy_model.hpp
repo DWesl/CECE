@@ -136,13 +136,16 @@ double integrate_canopy_emission(double par_direct, double par_diffuse, double l
 
         // Compute temperature-dependent gamma at each leaf temperature
         // Using the Guenther et al. (2012) light-dependent temperature response
-        double e_opt_sun = ceo * std::exp(e_opt_coeff * (pt_15 - 297.0));
-        double t_opt_sun = t_opt_c1 + t_opt_c2 * (pt_15 - 297.0);
-        double x_sun = (1.0 / t_opt_sun - 1.0 / t_leaf_sunlit) / gas_constant;
+        double safe_pt_15 = (pt_15 > 200.0) ? pt_15 : 200.0;
+        double e_opt_sun = ceo * std::exp(e_opt_coeff * (safe_pt_15 - 297.0));
+        double t_opt_sun = t_opt_c1 + t_opt_c2 * (safe_pt_15 - 297.0);
+        double safe_t_opt_sun = (t_opt_sun > 200.0) ? t_opt_sun : 200.0;
+
+        double x_sun = (1.0 / safe_t_opt_sun - 1.0 / t_leaf_sunlit) / gas_constant;
         double gamma_t_sun = e_opt_sun * ct2 * std::exp(ct1 * x_sun) / (ct2 - ct1 * (1.0 - std::exp(ct2 * x_sun)));
         gamma_t_sun = std::max(gamma_t_sun, 0.0);
 
-        double x_shade = (1.0 / t_opt_sun - 1.0 / t_leaf_shaded) / gas_constant;
+        double x_shade = (1.0 / safe_t_opt_sun - 1.0 / t_leaf_shaded) / gas_constant;
         double gamma_t_shade = e_opt_sun * ct2 * std::exp(ct1 * x_shade) / (ct2 - ct1 * (1.0 - std::exp(ct2 * x_shade)));
         gamma_t_shade = std::max(gamma_t_shade, 0.0);
 
