@@ -61,13 +61,19 @@ contains
     pure function bdsnp_moisture_factor(soil_moisture) result(f)
         real(c_double), intent(in) :: soil_moisture
         real(c_double) :: f
+        real(c_double) :: sm
 
-        if (soil_moisture <= 0.0d0) then
+        sm = soil_moisture
+        if (sm > 1.0d0) then
+            sm = 1.0d0
+        end if
+
+        if (sm <= 0.0d0) then
             f = 0.0d0
-        else if (soil_moisture <= BDSNP_SM_THRESH1) then
-            f = soil_moisture / BDSNP_SM_THRESH1
+        else if (sm <= BDSNP_SM_THRESH1) then
+            f = sm / BDSNP_SM_THRESH1
         else
-            f = 1.0d0 - BDSNP_SM_SLOPE2 * (soil_moisture - BDSNP_SM_THRESH1) &
+            f = 1.0d0 - BDSNP_SM_SLOPE2 * (sm - BDSNP_SM_THRESH1) &
                 / BDSNP_SM_RANGE2
         end if
     end function bdsnp_moisture_factor

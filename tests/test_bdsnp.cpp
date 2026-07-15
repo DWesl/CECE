@@ -35,14 +35,16 @@ static double test_bdsnp_soil_temp_term(double tc, double tc_max, double exp_coe
 
 /// BDSNP moisture factor (piecewise linear).
 static double test_bdsnp_moisture_factor(double soil_moisture) {
-    if (soil_moisture <= 0.0) return 0.0;
-    if (soil_moisture <= 0.3) return soil_moisture / 0.3;
-    return 1.0 - 0.5 * (soil_moisture - 0.3) / 0.7;
+    double sm = (soil_moisture > 1.0) ? 1.0 : soil_moisture;
+    if (sm <= 0.0) return 0.0;
+    if (sm <= 0.3) return sm / 0.3;
+    return 1.0 - 0.5 * (sm - 0.3) / 0.7;
 }
 
 /// BDSNP nitrogen deposition factor.
 static double test_bdsnp_ndep_factor(double ndep, double fert_ef, double wet_dep_s, double dry_dep_s) {
-    double dep_contribution = ndep * (wet_dep_s + dry_dep_s);
+    double safe_ndep = (ndep > 0.0) ? ndep : 0.0;
+    double dep_contribution = safe_ndep * (wet_dep_s + dry_dep_s);
     return 1.0 + fert_ef * dep_contribution;
 }
 
@@ -299,8 +301,8 @@ RC_GTEST_PROP(BdsnpParityProperty, Property14_BDSNP_CppFortranParity, ()) {
     // Generate soil temperature above freezing: [274, 330] K
     double soil_temp_k = 274.0 + (*rc::gen::inRange(0, 5601)) / 100.0;
 
-    // Generate soil moisture in [0.01, 1.0]
-    double soil_moisture = 0.01 + (*rc::gen::inRange(0, 9900)) / 10000.0;
+    // Generate soil moisture in [0.01, 2.5]
+    double soil_moisture = 0.01 + (*rc::gen::inRange(0, 24900)) / 10000.0;
 
     int nx = 2, ny = 2, nz = 1;
 
@@ -674,6 +676,35 @@ TEST_F(BdsnpSchemeTest, SoilNOWrittenToExportState_BdsnpMode) {
     for (int i = 0; i < nx; ++i) {
         for (int j = 0; j < ny; ++j) {
             EXPECT_GT(hv(i, j, 0), 0.0) << "soil_nox_emissions (bdsnp mode) should be positive at (" << i << "," << j << ")";
+        }
+    }
+}
+
+TEST_F(BdsnpSchemeTest, OutOfBoundsSafetyClamping) {
+    YAML::Node config;
+    config["soil_no_method"] = "bdsnp";
+
+    BdsnpScheme scheme;
+    scheme.Initialize(config, nullptr);
+
+    // Set out-of-bounds soil moisture (e.g. 2.5, which is > 1.0)
+    // and negative nitrogen deposition (e.g. -0.5)
+    SetFieldValue("soil_temperature", 300.0);
+    SetFieldValue("soil_moisture", 2.5);
+    SetFieldValue("nitrogen_deposition", -0.5);
+    SetFieldValue("soil_nox_emissions", 0.0, false);
+
+    scheme.Run(import_state, export_state);
+
+    auto& dv = export_state.fields["soil_nox_emissions"];
+    dv.sync<Kokkos::HostSpace>();
+    auto hv = dv.view_host();
+
+    for (int i = 0; i < nx; ++i) {
+        for (int j = 0; j < ny; ++j) {
+            // Because SM is clamped to 1.0 and ndep is clamped to 0.0,
+            // we should get positive, valid emissions instead of negative or NaNs.
+            EXPECT_GT(hv(i, j, 0), 0.0) << "soil_nox_emissions should be positive under out-of-bounds inputs";
         }
     }
 }
