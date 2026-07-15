@@ -89,16 +89,15 @@ double bdsnp_soil_wet_term(double gw, double wet_c1, double wet_c2) {
  */
 KOKKOS_INLINE_FUNCTION
 double bdsnp_moisture_factor(double soil_moisture) {
-    // Piecewise linear: ramp up from 0 at SM=0 to 1 at SM=0.3,
-    // then decrease linearly to 0.5 at SM=1.0
-    if (soil_moisture <= 0.0) {
+    double sm = (soil_moisture > 1.0) ? 1.0 : soil_moisture;
+    if (sm <= 0.0) {
         return 0.0;
     }
-    if (soil_moisture <= 0.3) {
-        return soil_moisture / 0.3;
+    if (sm <= 0.3) {
+        return sm / 0.3;
     }
     // Linear decrease from 1.0 at SM=0.3 to 0.5 at SM=1.0
-    return 1.0 - 0.5 * (soil_moisture - 0.3) / 0.7;
+    return 1.0 - 0.5 * (sm - 0.3) / 0.7;
 }
 
 /**
@@ -114,8 +113,9 @@ double bdsnp_moisture_factor(double soil_moisture) {
  */
 KOKKOS_INLINE_FUNCTION
 double bdsnp_ndep_factor(double ndep, double fert_emission_factor, double wet_dep_scaling, double dry_dep_scaling) {
+    double safe_ndep = (ndep > 0.0) ? ndep : 0.0;
     // Combined wet + dry deposition contribution
-    double dep_contribution = ndep * (wet_dep_scaling + dry_dep_scaling);
+    double dep_contribution = safe_ndep * (wet_dep_scaling + dry_dep_scaling);
     return 1.0 + fert_emission_factor * dep_contribution;
 }
 
