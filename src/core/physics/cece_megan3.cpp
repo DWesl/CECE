@@ -284,8 +284,6 @@ void Megan3Scheme::Run(CeceImportState& import_state, CeceExportState& export_st
             double ws = has_wind ? wind_speed(i, j, 0) : 0.0;
 
             // Compute shared gamma factors
-            double g_lai = get_gamma_lai(L, LAI_C1, LAI_C2, false);
-            double g_age = get_gamma_age(L, L_prev, dbtwn, T, 1.0, 1.0, 1.0, 1.0);
             double g_sm = get_gamma_sm(gwet, false);
             double g_par = get_gamma_par_pceea(pdr, pdf, PAR_AVG, sc, doy, WM2_TO_UMOL, PTOA_C1, PTOA_C2, GP_C1, GP_C2, GP_C3, GP_C4);
 
