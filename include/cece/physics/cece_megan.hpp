@@ -35,30 +35,34 @@ double get_gamma_lai(double lai, double c1, double c2, bool is_bidirectional) {
 
 KOKKOS_INLINE_FUNCTION
 double get_gamma_age(double cmlai, double pmlai, double dbtwn, double tt, double an, double ag, double am, double ao) {
+    double safe_cmlai = (cmlai > 0.0) ? cmlai : 0.0;
+    double safe_pmlai = (pmlai > 0.0) ? pmlai : 0.0;
+    double safe_dbtwn = (dbtwn > 0.1) ? dbtwn : 0.1;
+
     double fnew = 0.0, fgro = 0.0, fmat = 0.0, fold = 0.0;
     double ti = (tt <= 303.0) ? (5.0 + 0.7 * (300.0 - tt)) : 2.9;
     double tm = 2.3 * ti;
 
-    if (cmlai == pmlai) {
+    if (safe_cmlai == safe_pmlai) {
         fnew = 0.0;
         fgro = 0.1;
         fmat = 0.8;
         fold = 0.1;
-    } else if (cmlai > pmlai) {
-        if (dbtwn > ti)
-            fnew = (ti / dbtwn) * (1.0 - pmlai / cmlai);
+    } else if (safe_cmlai > safe_pmlai) {
+        if (safe_dbtwn > ti)
+            fnew = (ti / safe_dbtwn) * (1.0 - safe_pmlai / safe_cmlai);
         else
-            fnew = 1.0 - (pmlai / cmlai);
-        if (dbtwn > tm)
-            fmat = (pmlai / cmlai) + ((dbtwn - tm) / dbtwn) * (1.0 - pmlai / cmlai);
+            fnew = 1.0 - (safe_pmlai / safe_cmlai);
+        if (safe_dbtwn > tm)
+            fmat = (safe_pmlai / safe_cmlai) + ((safe_dbtwn - tm) / safe_dbtwn) * (1.0 - safe_pmlai / safe_cmlai);
         else
-            fmat = pmlai / cmlai;
+            fmat = safe_pmlai / safe_cmlai;
         fgro = 1.0 - fnew - fmat;
         fold = 0.0;
     } else {
         fnew = 0.0;
         fgro = 0.0;
-        fold = (pmlai - cmlai) / pmlai;
+        fold = (safe_pmlai - safe_cmlai) / safe_pmlai;
         fmat = 1.0 - fold;
     }
     return std::max(fnew * an + fgro * ag + fmat * am + fold * ao, 0.0);
@@ -81,9 +85,12 @@ double get_gamma_t_li(double temp, double beta, double t_standard) {
 
 KOKKOS_INLINE_FUNCTION
 double get_gamma_t_ld(double T, double PT_15, double CT1, double CEO, double R, double CT2, double t_opt_c1, double t_opt_c2, double e_opt_coeff) {
-    double e_opt = CEO * std::exp(e_opt_coeff * (PT_15 - 297.0));
-    double t_opt = t_opt_c1 + t_opt_c2 * (PT_15 - 297.0);
-    double x = (1.0 / t_opt - 1.0 / T) / R;
+    double safe_T = (T > 200.0) ? T : 200.0;
+    double safe_PT_15 = (PT_15 > 200.0) ? PT_15 : 200.0;
+    double e_opt = CEO * std::exp(e_opt_coeff * (safe_PT_15 - 297.0));
+    double t_opt = t_opt_c1 + t_opt_c2 * (safe_PT_15 - 297.0);
+    double safe_t_opt = (t_opt > 200.0) ? t_opt : 200.0;
+    double x = (1.0 / safe_t_opt - 1.0 / safe_T) / R;
     double c_t = e_opt * CT2 * std::exp(CT1 * x) / (CT2 - CT1 * (1.0 - std::exp(CT2 * x)));
     return std::max(c_t, 0.0);
 }
