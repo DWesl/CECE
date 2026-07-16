@@ -119,6 +119,7 @@ struct SpeciationMapping {
     std::string mechanism_species;  ///< Target mechanism species name (e.g., "ISOP", "TERP")
     EmissionClass emission_class;   ///< Source emission class (e.g., EmissionClass::MT_PINE)
     double scale_factor;            ///< Fractional contribution (positive)
+    std::string dataset;            ///< Dataset namespace (e.g., "MEGAN", "ANTHRO")
 };
 
 /**

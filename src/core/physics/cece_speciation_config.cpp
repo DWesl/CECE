@@ -213,6 +213,7 @@ void SpeciationConfigLoader::ParseMapping(const YAML::Node& node, SpeciationConf
             }
 
             SpeciationMapping mapping;
+            mapping.dataset = dataset;
             mapping.mechanism_species = mechanism_species;
             mapping.emission_class = ec;
             mapping.scale_factor = scale_factor;
@@ -253,8 +254,9 @@ void SpeciationConfigLoader::Validate(const SpeciationConfig& config) {
     for (const auto& mapping : config.mappings) {
         int ec_idx = static_cast<int>(mapping.emission_class);
         if (ec_idx < 0 || ec_idx >= static_cast<int>(EmissionClass::COUNT)) {
+            std::string ds_info = mapping.dataset.empty() ? "" : " in dataset '" + mapping.dataset + "'";
             throw std::invalid_argument("Invalid emission class index " + std::to_string(ec_idx) + " in mapping for mechanism species '" +
-                                        mapping.mechanism_species + "'");
+                                        mapping.mechanism_species + "'" + ds_info);
         }
     }
 }
@@ -278,26 +280,34 @@ std::string SpeciationConfigLoader::ToYaml(const SpeciationConfig& config) {
     // Emit mapping section (dataset-oriented format)
     out << YAML::Key << "mechanism" << YAML::Value << config.mechanism_name;
     out << YAML::Key << "datasets" << YAML::Value << YAML::BeginMap;
-    out << YAML::Key << config.dataset_name << YAML::Value << YAML::BeginMap;
 
-    // Group mappings by mechanism species
-    std::unordered_map<std::string, std::vector<const SpeciationMapping*>> grouped;
+    // Group mappings by dataset name, and then by mechanism species using std::map for deterministic output
+    std::map<std::string, std::map<std::string, std::vector<const SpeciationMapping*>>> grouped_by_dataset_and_species;
     for (const auto& m : config.mappings) {
-        grouped[m.mechanism_species].push_back(&m);
+        std::string ds = m.dataset.empty() ? config.dataset_name : m.dataset;
+        grouped_by_dataset_and_species[ds][m.mechanism_species].push_back(&m);
     }
 
-    for (const auto& [mech_sp, mapping_ptrs] : grouped) {
-        // Quote mechanism species names to prevent yaml-cpp from interpreting
-        // "NO" as boolean false (YAML 1.1 compatibility issue)
-        out << YAML::Key << YAML::DoubleQuoted << mech_sp << YAML::Value << YAML::BeginMap;
-        for (const auto* mp : mapping_ptrs) {
-            // Quote emission class names too
-            out << YAML::Key << YAML::DoubleQuoted << EmissionClassToString(mp->emission_class) << YAML::Value << mp->scale_factor;
+    // Ensure that if we have no mappings but have a dataset_name, we still represent it
+    if (grouped_by_dataset_and_species.empty() && !config.dataset_name.empty()) {
+        grouped_by_dataset_and_species[config.dataset_name] = {};
+    }
+
+    for (const auto& [ds_name, species_map] : grouped_by_dataset_and_species) {
+        out << YAML::Key << ds_name << YAML::Value << YAML::BeginMap;
+        for (const auto& [mech_sp, mapping_ptrs] : species_map) {
+            // Quote mechanism species names to prevent yaml-cpp from interpreting
+            // "NO" as boolean false (YAML 1.1 compatibility issue)
+            out << YAML::Key << YAML::DoubleQuoted << mech_sp << YAML::Value << YAML::BeginMap;
+            for (const auto* mp : mapping_ptrs) {
+                // Quote emission class names too
+                out << YAML::Key << YAML::DoubleQuoted << EmissionClassToString(mp->emission_class) << YAML::Value << mp->scale_factor;
+            }
+            out << YAML::EndMap;
         }
         out << YAML::EndMap;
     }
 
-    out << YAML::EndMap;  // end dataset
     out << YAML::EndMap;  // end datasets
     out << YAML::EndMap;  // end root
 
