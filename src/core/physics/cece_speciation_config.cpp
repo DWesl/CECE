@@ -127,98 +127,117 @@ void SpeciationConfigLoader::ParseMapping(const YAML::Node& node, SpeciationConf
         throw std::invalid_argument("Mapping file missing required 'datasets' section");
     }
 
-    // Find the requested dataset
-    YAML::Node dataset_node;
-    bool found_dataset = false;
-    for (auto ds_it = datasets_node.begin(); ds_it != datasets_node.end(); ++ds_it) {
-        std::string ds_name;
-        try {
-            ds_name = ds_it->first.as<std::string>();
-        } catch (...) {
-            ds_name = ds_it->first.Scalar();
-        }
-        if (ds_name == dataset) {
-            dataset_node = YAML::Clone(ds_it->second);
-            found_dataset = true;
-            break;
-        }
-    }
-
-    if (!found_dataset) {
-        throw std::invalid_argument("Requested dataset '" + dataset + "' not found in mapping file");
-    }
-
-    config.dataset_name = dataset;
-
-    if (!dataset_node.IsMap()) {
-        throw std::invalid_argument("Dataset '" + dataset + "' is not a map");
-    }
-
-    // Iterate mechanism species entries in the dataset
-    for (auto mech_it = dataset_node.begin(); mech_it != dataset_node.end(); ++mech_it) {
-        if (mech_it->first.Type() == YAML::NodeType::Null) continue;
-
-        std::string mechanism_species;
-        try {
-            mechanism_species = mech_it->first.as<std::string>();
-        } catch (...) {
-            mechanism_species = mech_it->first.Scalar();
+    // Lambda to parse a single dataset node and append its mappings
+    auto parse_single_dataset = [&](const std::string& ds_name, const YAML::Node& ds_node) {
+        if (!ds_node.IsMap()) {
+            throw std::invalid_argument("Dataset '" + ds_name + "' is not a map");
         }
 
-        YAML::Node class_map = YAML::Clone(mech_it->second);
+        // Iterate mechanism species entries in the dataset
+        for (auto mech_it = ds_node.begin(); mech_it != ds_node.end(); ++mech_it) {
+            if (mech_it->first.Type() == YAML::NodeType::Null) continue;
 
-        if (!class_map.IsMap()) {
-            throw std::invalid_argument("Mechanism species '" + mechanism_species + "' in dataset '" + dataset +
-                                        "' is not a map of emission classes");
-        }
-
-        // Iterate emission class → scale factor pairs
-        for (auto class_it = class_map.begin(); class_it != class_map.end(); ++class_it) {
-            const auto& key_node = class_it->first;
-
-            // Skip null nodes
-            if (key_node.Type() == YAML::NodeType::Null || !key_node.IsDefined()) {
-                continue;
+            std::string mechanism_species;
+            try {
+                mechanism_species = mech_it->first.as<std::string>();
+            } catch (...) {
+                mechanism_species = mech_it->first.Scalar();
             }
 
-            std::string class_name = key_node.Scalar();
-            if (class_name.empty()) {
-                try {
-                    class_name = key_node.as<std::string>();
-                } catch (...) {
-                    class_name = "";
+            YAML::Node class_map = YAML::Clone(mech_it->second);
+
+            if (!class_map.IsMap()) {
+                throw std::invalid_argument("Mechanism species '" + mechanism_species + "' in dataset '" + ds_name +
+                                            "' is not a map of emission classes");
+            }
+
+            // Iterate emission class → scale factor pairs
+            for (auto class_it = class_map.begin(); class_it != class_map.end(); ++class_it) {
+                const auto& key_node = class_it->first;
+
+                // Skip null nodes
+                if (key_node.Type() == YAML::NodeType::Null || !key_node.IsDefined()) {
+                    continue;
                 }
-            }
 
-            // Handle yaml-cpp YAML 1.1 boolean interpretation of "NO"
-            if (class_name == "false" || class_name == "no") {
-                class_name = "NO";
-            }
-
-            EmissionClass ec;
-            if (!StringToEmissionClass(class_name, ec)) {
-                std::string upper_name = class_name;
-                std::transform(upper_name.begin(), upper_name.end(), upper_name.begin(), ::toupper);
-                if (!StringToEmissionClass(upper_name, ec)) {
-                    throw std::invalid_argument("Invalid emission class '" + class_name + "' for mechanism species '" + mechanism_species +
-                                                "' in dataset '" + dataset + "'");
+                std::string class_name = key_node.Scalar();
+                if (class_name.empty()) {
+                    try {
+                        class_name = key_node.as<std::string>();
+                    } catch (...) {
+                        class_name = "";
+                    }
                 }
+
+                // Handle yaml-cpp YAML 1.1 boolean interpretation of "NO"
+                if (class_name == "false" || class_name == "no") {
+                    class_name = "NO";
+                }
+
+                EmissionClass ec;
+                if (!StringToEmissionClass(class_name, ec)) {
+                    std::string upper_name = class_name;
+                    std::transform(upper_name.begin(), upper_name.end(), upper_name.begin(), ::toupper);
+                    if (!StringToEmissionClass(upper_name, ec)) {
+                        throw std::invalid_argument("Invalid emission class '" + class_name + "' for mechanism species '" + mechanism_species +
+                                                    "' in dataset '" + ds_name + "'");
+                    }
+                }
+
+                double scale_factor = class_it->second.as<double>();
+
+                if (scale_factor <= 0.0) {
+                    throw std::invalid_argument("Non-positive scale factor " + std::to_string(scale_factor) + " for emission class '" + class_name +
+                                                "' → mechanism species '" + mechanism_species + "' in dataset '" + ds_name + "'");
+                }
+
+                SpeciationMapping mapping;
+                mapping.dataset = ds_name;
+                mapping.mechanism_species = mechanism_species;
+                mapping.emission_class = ec;
+                mapping.scale_factor = scale_factor;
+                config.mappings.push_back(mapping);
             }
-
-            double scale_factor = class_it->second.as<double>();
-
-            if (scale_factor <= 0.0) {
-                throw std::invalid_argument("Non-positive scale factor " + std::to_string(scale_factor) + " for emission class '" + class_name +
-                                            "' → mechanism species '" + mechanism_species + "' in dataset '" + dataset + "'");
-            }
-
-            SpeciationMapping mapping;
-            mapping.dataset = dataset;
-            mapping.mechanism_species = mechanism_species;
-            mapping.emission_class = ec;
-            mapping.scale_factor = scale_factor;
-            config.mappings.push_back(mapping);
         }
+    };
+
+    bool load_all = (dataset == "all" || dataset == "" || dataset == "*");
+
+    if (load_all) {
+        config.dataset_name = "all";
+        for (auto ds_it = datasets_node.begin(); ds_it != datasets_node.end(); ++ds_it) {
+            std::string ds_name;
+            try {
+                ds_name = ds_it->first.as<std::string>();
+            } catch (...) {
+                ds_name = ds_it->first.Scalar();
+            }
+            parse_single_dataset(ds_name, ds_it->second);
+        }
+    } else {
+        // Find the requested dataset
+        YAML::Node dataset_node;
+        bool found_dataset = false;
+        for (auto ds_it = datasets_node.begin(); ds_it != datasets_node.end(); ++ds_it) {
+            std::string ds_name;
+            try {
+                ds_name = ds_it->first.as<std::string>();
+            } catch (...) {
+                ds_name = ds_it->first.Scalar();
+            }
+            if (ds_name == dataset) {
+                dataset_node = YAML::Clone(ds_it->second);
+                found_dataset = true;
+                break;
+            }
+        }
+
+        if (!found_dataset) {
+            throw std::invalid_argument("Requested dataset '" + dataset + "' not found in mapping file");
+        }
+
+        config.dataset_name = dataset;
+        parse_single_dataset(dataset, dataset_node);
     }
 }
 
