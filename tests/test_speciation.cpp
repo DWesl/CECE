@@ -888,6 +888,116 @@ TEST_F(CB6ConfigLoadingTest, LoadAllCB6SpeciationConfig) {
     EXPECT_NE(serialized.find("MEGAN:"), std::string::npos);
 }
 
+TEST_F(CB6ConfigLoadingTest, MultiDatasetAccumulationAndDiagnostics) {
+    // 1. Create a speciation config with two datasets manually
+    SpeciationConfig config;
+    config.mechanism_name = "TEST_MULTI_ACC";
+    config.dataset_name = "all";
+
+    // Species
+    MechanismSpecies sp_isop;
+    sp_isop.name = "ISOP";
+    sp_isop.molecular_weight = 68.12;
+    config.species.push_back(sp_isop);
+
+    MechanismSpecies sp_co;
+    sp_co.name = "CO";
+    sp_co.molecular_weight = 28.01;
+    config.species.push_back(sp_co);
+
+    // MEGAN mappings
+    SpeciationMapping m_megan;
+    m_megan.dataset = "MEGAN";
+    m_megan.mechanism_species = "ISOP";
+    m_megan.emission_class = EmissionClass::ISOP;
+    m_megan.scale_factor = 1.0;
+    config.mappings.push_back(m_megan);
+
+    // ANTHRO_ROAD mappings
+    SpeciationMapping m_anthro;
+    m_anthro.dataset = "ANTHRO_ROAD";
+    m_anthro.mechanism_species = "ISOP";
+    m_anthro.emission_class = EmissionClass::CO;  // map CO class to ISOP for test
+    m_anthro.scale_factor = 0.5;
+    config.mappings.push_back(m_anthro);
+
+    // 2. Initialize the engine
+    SpeciationEngine engine;
+    engine.Initialize(config);
+
+    // 3. Create grid and input class totals
+    int nx = 2, ny = 2;
+    int num_cells = nx * ny;
+
+    Kokkos::View<double**, Kokkos::LayoutLeft, Kokkos::DefaultExecutionSpace> megan_totals_rw("megan_totals", 19, num_cells);
+    auto h_megan = Kokkos::create_mirror_view(megan_totals_rw);
+    Kokkos::deep_copy(h_megan, 0.0);
+    for (int cell = 0; cell < num_cells; ++cell) {
+        h_megan(static_cast<int>(EmissionClass::ISOP), cell) = 1.0;  // 1.0 ISOP
+    }
+    Kokkos::deep_copy(megan_totals_rw, h_megan);
+
+    Kokkos::View<double**, Kokkos::LayoutLeft, Kokkos::DefaultExecutionSpace> anthro_totals_rw("anthro_totals", 19, num_cells);
+    auto h_anthro = Kokkos::create_mirror_view(anthro_totals_rw);
+    Kokkos::deep_copy(h_anthro, 0.0);
+    for (int cell = 0; cell < num_cells; ++cell) {
+        h_anthro(static_cast<int>(EmissionClass::CO), cell) = 10.0;  // 10.0 CO class (representing CO roads)
+    }
+    Kokkos::deep_copy(anthro_totals_rw, h_anthro);
+
+    // 4. Create export state and allocate fields
+    CeceExportState export_state;
+
+    // Tendency view (shared, initialized to 0.0)
+    export_state.fields["EMIS_ISOP"] = DualView3D("export_emis_isop", nx, ny, 1);
+    Kokkos::deep_copy(export_state.fields["EMIS_ISOP"].view_device(), 0.0);
+    export_state.fields["EMIS_ISOP"].modify_device();
+
+    // MEGAN diagnostic view (direct, initialized to 0.0)
+    export_state.fields["MEGAN_ISOP"] = DualView3D("export_megan_isop", nx, ny, 1);
+    Kokkos::deep_copy(export_state.fields["MEGAN_ISOP"].view_device(), 0.0);
+    export_state.fields["MEGAN_ISOP"].modify_device();
+
+    // ANTHRO_ROAD diagnostic view (direct, initialized to 0.0)
+    export_state.fields["ANTHRO_ROAD_ISOP"] = DualView3D("export_anthro_road_isop", nx, ny, 1);
+    Kokkos::deep_copy(export_state.fields["ANTHRO_ROAD_ISOP"].view_device(), 0.0);
+    export_state.fields["ANTHRO_ROAD_ISOP"].modify_device();
+
+    // 5. Run MEGAN speciation (adds to EMIS_ISOP, overwrites MEGAN_ISOP)
+    Kokkos::View<const double**, Kokkos::LayoutLeft, Kokkos::DefaultExecutionSpace> megan_totals = megan_totals_rw;
+    engine.Run("MEGAN", megan_totals, export_state, nx, ny);
+
+    // 6. Run ANTHRO_ROAD speciation (adds to EMIS_ISOP, overwrites ANTHRO_ROAD_ISOP)
+    Kokkos::View<const double**, Kokkos::LayoutLeft, Kokkos::DefaultExecutionSpace> anthro_totals = anthro_totals_rw;
+    engine.Run("ANTHRO_ROAD", anthro_totals, export_state, nx, ny);
+
+    // 7. Verify outputs
+    export_state.fields["EMIS_ISOP"].sync_host();
+    auto h_emis_isop = export_state.fields["EMIS_ISOP"].view_host();
+
+    export_state.fields["MEGAN_ISOP"].sync_host();
+    auto h_megan_isop = export_state.fields["MEGAN_ISOP"].view_host();
+
+    export_state.fields["ANTHRO_ROAD_ISOP"].sync_host();
+    auto h_anthro_isop = export_state.fields["ANTHRO_ROAD_ISOP"].view_host();
+
+    for (int i = 0; i < nx; ++i) {
+        for (int j = 0; j < ny; ++j) {
+            // MEGAN contribution: 1.0 * 1.0 * 68.12 = 68.12
+            double expected_megan = 1.0 * 1.0 * 68.12;
+            EXPECT_NEAR(h_megan_isop(i, j, 0), expected_megan, 1e-10);
+
+            // ANTHRO contribution: 10.0 * 0.5 * 68.12 = 340.6
+            double expected_anthro = 10.0 * 0.5 * 68.12;
+            EXPECT_NEAR(h_anthro_isop(i, j, 0), expected_anthro, 1e-10);
+
+            // Combined tendency EMIS_ISOP: 68.12 + 340.6 = 408.72
+            double expected_tendency = expected_megan + expected_anthro;
+            EXPECT_NEAR(h_emis_isop(i, j, 0), expected_tendency, 1e-10);
+        }
+    }
+}
+
 }  // namespace cece
 
 int main(int argc, char** argv) {

@@ -179,7 +179,7 @@ void SpeciationEngine::Run(const std::string& dataset_name,
                 "SpeciationSharedExport_" + sp_name, Kokkos::MDRangePolicy<Kokkos::DefaultExecutionSpace, Kokkos::Rank<2>>({0, 0}, {nx, ny}),
                 KOKKOS_LAMBDA(int i, int j) {
                     int cell = i + j * nx;
-                    shared_view(i, j, 0) += mech_accum(sp_idx, cell);
+                    Kokkos::atomic_add(&shared_view(i, j, 0), mech_accum(sp_idx, cell));
                 });
             shared_it->second.modify_device();
         }
