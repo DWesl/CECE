@@ -844,6 +844,34 @@ TEST_F(CB6ConfigLoadingTest, LoadCB6SpeciationConfig) {
     EXPECT_TRUE(found_isop_mapping) << "ISOP->ISOP mapping should exist";
 }
 
+TEST_F(CB6ConfigLoadingTest, LoadAllCB6SpeciationConfig) {
+    std::string src_dir = CECE_SOURCE_DIR;
+    std::string spc_path = src_dir + "/data/speciation/spc_cb6.yaml";
+    std::string map_path = src_dir + "/data/speciation/map_cb6.yaml";
+
+    SpeciationConfigLoader loader;
+    // Loading with "all" dataset should load all datasets simultaneously
+    SpeciationConfig config = loader.Load(spc_path, map_path, "all");
+
+    EXPECT_EQ(config.mechanism_name, "CB6_AE7");
+    EXPECT_EQ(config.dataset_name, "all");
+    EXPECT_GT(config.mappings.size(), 0u);
+
+    // Verify dataset namespaces are preserved on mappings
+    bool found_megan = false;
+    for (const auto& m : config.mappings) {
+        if (m.dataset == "MEGAN") {
+            found_megan = true;
+        }
+    }
+    EXPECT_TRUE(found_megan) << "Mappings should contain MEGAN dataset namespace";
+
+    // Round-trip to YAML should contain datasets and MEGAN section
+    std::string serialized = loader.ToYaml(config);
+    EXPECT_NE(serialized.find("datasets:"), std::string::npos);
+    EXPECT_NE(serialized.find("MEGAN:"), std::string::npos);
+}
+
 }  // namespace cece
 
 int main(int argc, char** argv) {
