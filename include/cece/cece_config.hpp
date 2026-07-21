@@ -145,7 +145,7 @@ struct CeceDataStreamConfig {
  */
 struct CeceDataConfig {
     std::vector<CeceDataStreamConfig> streams;  ///< List of input streams.
-    int debug_level = 0;                        ///< TIDE/strdata debug verbosity level (0=off, 1=time-matching info).
+    int debug_level = 0;                        ///< Data stream debug verbosity level (0=off, 1=time-matching info).
 };
 
 /// The coordinate variables the standalone writer manages itself: they
