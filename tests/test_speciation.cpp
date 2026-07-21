@@ -587,28 +587,44 @@ static rc::Gen<SpeciationConfig> genMultiMappingConfig() {
 /// Helper to run the speciation engine and collect output into a map of
 /// mechanism species name -> accumulated value across all grid cells.
 static std::unordered_map<std::string, double> RunEngineAndCollect(
-    SpeciationEngine& engine, const Kokkos::View<const double**, Kokkos::LayoutLeft, Kokkos::DefaultExecutionSpace>& class_totals,
-    const std::vector<std::string>& mech_names, int nx, int ny) {
+    SpeciationEngine& engine, const std::string& dataset_name,
+    const Kokkos::View<const double**, Kokkos::LayoutLeft, Kokkos::DefaultExecutionSpace>& class_totals, const std::vector<std::string>& mech_names,
+    int nx, int ny) {
     CeceExportState export_state;
     for (const auto& name : mech_names) {
-        std::string field_name = "MEGAN_" + name;
+        // Allocate process-specific diagnostic view
+        std::string field_name = dataset_name + "_" + name;
         export_state.fields[field_name] = DualView3D("export_" + field_name, nx, ny, 1);
         Kokkos::deep_copy(export_state.fields[field_name].view_device(), 0.0);
         export_state.fields[field_name].modify_device();
+
+        // Allocate shared tendency view
+        std::string shared_name = "EMIS_" + name;
+        export_state.fields[shared_name] = DualView3D("export_" + shared_name, nx, ny, 1);
+        Kokkos::deep_copy(export_state.fields[shared_name].view_device(), 0.0);
+        export_state.fields[shared_name].modify_device();
     }
 
-    engine.Run(class_totals, export_state, nx, ny);
+    engine.Run(dataset_name, class_totals, export_state, nx, ny);
 
     std::unordered_map<std::string, double> results;
     for (const auto& name : mech_names) {
-        std::string field_name = "MEGAN_" + name;
+        std::string field_name = dataset_name + "_" + name;
         auto& dv = export_state.fields[field_name];
         dv.sync_host();
         auto h_view = dv.view_host();
+
+        std::string shared_name = "EMIS_" + name;
+        auto& shared_dv = export_state.fields[shared_name];
+        shared_dv.sync_host();
+        auto h_shared_view = shared_dv.view_host();
+
         double total = 0.0;
         for (int i = 0; i < nx; ++i) {
             for (int j = 0; j < ny; ++j) {
                 total += h_view(i, j, 0);
+                // Assert that the EMIS_ shared tendency field matches the diagnostic field perfectly
+                RC_ASSERT(std::abs(h_view(i, j, 0) - h_shared_view(i, j, 0)) < 1e-11);
             }
         }
         results[name] = total;
@@ -647,7 +663,7 @@ RC_GTEST_PROP(SpeciationProperty, Property10_PipelineCorrectness, ()) {
 
     Kokkos::View<const double**, Kokkos::LayoutLeft, Kokkos::DefaultExecutionSpace> class_totals = class_totals_rw;
 
-    auto results = RunEngineAndCollect(engine, class_totals, mech_names, nx, ny);
+    auto results = RunEngineAndCollect(engine, config.dataset_name, class_totals, mech_names, nx, ny);
 
     // Build MW lookup
     std::unordered_map<std::string, double> mw_lookup;
@@ -705,7 +721,7 @@ RC_GTEST_PROP(SpeciationProperty, Property10_SimpleConfigCorrectness, ()) {
 
     Kokkos::View<const double**, Kokkos::LayoutLeft, Kokkos::DefaultExecutionSpace> class_totals = class_totals_rw;
 
-    auto results = RunEngineAndCollect(engine, class_totals, mech_names, nx, ny);
+    auto results = RunEngineAndCollect(engine, config.dataset_name, class_totals, mech_names, nx, ny);
 
     // Compute expected total output
     double expected_total = 0.0;
@@ -764,10 +780,10 @@ RC_GTEST_PROP(SpeciationProperty, Property17_AccumulationDeterminism, ()) {
     Kokkos::View<const double**, Kokkos::LayoutLeft, Kokkos::DefaultExecutionSpace> class_totals = class_totals_rw;
 
     // Run 1
-    auto results1 = RunEngineAndCollect(engine, class_totals, mech_names, nx, ny);
+    auto results1 = RunEngineAndCollect(engine, config.dataset_name, class_totals, mech_names, nx, ny);
 
     // Run 2 (identical inputs)
-    auto results2 = RunEngineAndCollect(engine, class_totals, mech_names, nx, ny);
+    auto results2 = RunEngineAndCollect(engine, config.dataset_name, class_totals, mech_names, nx, ny);
 
     // Assert bit-identical outputs
     for (const auto& name : mech_names) {

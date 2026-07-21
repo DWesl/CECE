@@ -107,9 +107,21 @@ void SpeciationEngine::Initialize(const SpeciationConfig& config) {
               << num_mechanism_species_ << " mechanism species.\n";
 }
 
-void SpeciationEngine::Run(const Kokkos::View<const double**, Kokkos::LayoutLeft, Kokkos::DefaultExecutionSpace>& class_totals,
+void SpeciationEngine::Run(const std::string& dataset_name,
+                           const Kokkos::View<const double**, Kokkos::LayoutLeft, Kokkos::DefaultExecutionSpace>& class_totals,
                            CeceExportState& export_state, int nx, int ny) {
     if (num_mappings_ == 0 || num_mechanism_species_ == 0) {
+        return;
+    }
+
+    auto offset_it = dataset_offsets_.find(dataset_name);
+    if (offset_it == dataset_offsets_.end()) {
+        std::cerr << "SpeciationEngine: Requested dataset '" << dataset_name << "' not found, skipping run.\n";
+        return;
+    }
+    int start_m = offset_it->second.first;
+    int count_m = offset_it->second.second;
+    if (count_m == 0) {
         return;
     }
 
@@ -127,19 +139,19 @@ void SpeciationEngine::Run(const Kokkos::View<const double**, Kokkos::LayoutLeft
     auto d_class_indices = class_indices_;
     auto d_mechanism_indices = mechanism_indices_;
     auto d_molecular_weights = molecular_weights_;
-    int n_mappings = num_mappings_;
 
-    // Speciation kernel: for each grid cell and each mapping entry,
+    // Speciation kernel: for each grid cell and each mapping entry in this dataset,
     // read the class total, apply scale_factor, and accumulate to the
     // mechanism species output using atomic_add.
     // MW is applied after accumulation (per mechanism species).
     Kokkos::parallel_for(
-        "SpeciationKernel", Kokkos::MDRangePolicy<Kokkos::DefaultExecutionSpace, Kokkos::Rank<2>>({0, 0}, {num_cells, n_mappings}),
+        "SpeciationKernel", Kokkos::MDRangePolicy<Kokkos::DefaultExecutionSpace, Kokkos::Rank<2>>({0, 0}, {num_cells, count_m}),
         KOKKOS_LAMBDA(int cell, int m) {
-            int class_idx = d_class_indices(m);
-            int mech_idx = d_mechanism_indices(m);
+            int abs_m = start_m + m;
+            int class_idx = d_class_indices(abs_m);
+            int mech_idx = d_mechanism_indices(abs_m);
             double class_total = class_totals(class_idx, cell);
-            double contribution = class_total * d_scale_factors(m);
+            double contribution = class_total * d_scale_factors(abs_m);
             Kokkos::atomic_add(&mech_accum(mech_idx, cell), contribution);
         });
 
@@ -153,30 +165,41 @@ void SpeciationEngine::Run(const Kokkos::View<const double**, Kokkos::LayoutLeft
 
     Kokkos::fence();
 
-    // Copy results to export state fields
-    // Each mechanism species gets written to "MEGAN_<species_name>"
+    // Copy results to export state fields (Dual-Write Additive Accumulation)
     for (int sp = 0; sp < num_mechanism_species_; ++sp) {
-        std::string field_name = "MEGAN_" + mechanism_species_names_[sp];
-        auto it = export_state.fields.find(field_name);
-        if (it == export_state.fields.end()) {
-            std::cerr << "SpeciationEngine: Export field '" << field_name << "' not found in export state, skipping.\n";
-            continue;
-        }
-
-        auto export_view = it->second.view_device();
+        std::string sp_name = mechanism_species_names_[sp];
         int sp_idx = sp;
 
-        // Write accumulated values into the 3D export field (nx, ny, 1)
-        Kokkos::parallel_for(
-            "SpeciationExport_" + mechanism_species_names_[sp],
-            Kokkos::MDRangePolicy<Kokkos::DefaultExecutionSpace, Kokkos::Rank<2>>({0, 0}, {nx, ny}), KOKKOS_LAMBDA(int i, int j) {
-                int cell = i + j * nx;
-                export_view(i, j, 0) = mech_accum(sp_idx, cell);
-            });
+        // 1. Shared Tendency Accumulation (Additive): "EMIS_<species_name>"
+        std::string shared_field_name = "EMIS_" + sp_name;
+        auto shared_it = export_state.fields.find(shared_field_name);
+        if (shared_it != export_state.fields.end()) {
+            auto shared_view = shared_it->second.view_device();
+            Kokkos::parallel_for(
+                "SpeciationSharedExport_" + sp_name, Kokkos::MDRangePolicy<Kokkos::DefaultExecutionSpace, Kokkos::Rank<2>>({0, 0}, {nx, ny}),
+                KOKKOS_LAMBDA(int i, int j) {
+                    int cell = i + j * nx;
+                    shared_view(i, j, 0) += mech_accum(sp_idx, cell);
+                });
+            shared_it->second.modify_device();
+        }
 
-        Kokkos::fence();
-        it->second.modify_device();
+        // 2. Process-Specific Diagnostic (Direct Assignment): "<dataset_name>_<species_name>"
+        std::string diagnostic_field_name = dataset_name + "_" + sp_name;
+        auto diag_it = export_state.fields.find(diagnostic_field_name);
+        if (diag_it != export_state.fields.end()) {
+            auto diag_view = diag_it->second.view_device();
+            Kokkos::parallel_for(
+                "SpeciationDiagExport_" + sp_name, Kokkos::MDRangePolicy<Kokkos::DefaultExecutionSpace, Kokkos::Rank<2>>({0, 0}, {nx, ny}),
+                KOKKOS_LAMBDA(int i, int j) {
+                    int cell = i + j * nx;
+                    diag_view(i, j, 0) = mech_accum(sp_idx, cell);
+                });
+            diag_it->second.modify_device();
+        }
     }
+
+    Kokkos::fence();
 }
 
 const std::vector<std::string>& SpeciationEngine::GetMechanismSpeciesNames() const {

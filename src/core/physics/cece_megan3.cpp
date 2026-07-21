@@ -340,7 +340,7 @@ void Megan3Scheme::Run(CeceImportState& import_state, CeceExportState& export_st
 
     // ---- Run speciation engine to convert class totals to mechanism species ----
     auto const_class_totals = Kokkos::View<const double**, Kokkos::LayoutLeft, Kokkos::DefaultExecutionSpace>(class_totals_);
-    speciation_engine_.Run(const_class_totals, export_state, nx, ny);
+    speciation_engine_.Run("MEGAN", const_class_totals, export_state, nx, ny);
 
     Kokkos::fence();
 

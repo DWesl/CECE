@@ -47,15 +47,15 @@ class SpeciationEngine {
      * For each mechanism species s, computes:
      *   output[s] = (Σ class_total[c] × scale_factor[c→s]) × MW[s]
      *
+     * @param dataset_name The dataset namespace (e.g., "MEGAN", "ANTHRO").
      * @param class_totals Device-side view of shape (num_classes, nx*ny) containing
      *                     the 19 emission class totals per grid cell.
-     * @param export_state The export state to write mechanism species fields into,
-     *                     using the "MEGAN_" prefix convention.
+     * @param export_state The export state to write mechanism species fields into.
      * @param nx Number of grid cells in the x-dimension.
      * @param ny Number of grid cells in the y-dimension.
      */
-    void Run(const Kokkos::View<const double**, Kokkos::LayoutLeft, Kokkos::DefaultExecutionSpace>& class_totals, CeceExportState& export_state,
-             int nx, int ny);
+    void Run(const std::string& dataset_name, const Kokkos::View<const double**, Kokkos::LayoutLeft, Kokkos::DefaultExecutionSpace>& class_totals,
+             CeceExportState& export_state, int nx, int ny);
 
     /**
      * @brief Returns the list of mechanism species names for dynamic field registration.
