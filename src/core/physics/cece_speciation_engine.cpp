@@ -19,12 +19,14 @@
 
 #include <Kokkos_Core.hpp>
 #include <iostream>
+#include <map>
 #include <stdexcept>
 #include <unordered_map>
 
 namespace cece {
 
 void SpeciationEngine::Initialize(const SpeciationConfig& config) {
+    dataset_offsets_.clear();
     num_mappings_ = static_cast<int>(config.mappings.size());
     if (num_mappings_ == 0) {
         std::cerr << "SpeciationEngine: No mappings in config, nothing to initialize.\n";
@@ -52,13 +54,29 @@ void SpeciationEngine::Initialize(const SpeciationConfig& config) {
         }
     }
 
-    // Flatten mappings into parallel host arrays
+    // Group and sort mappings by dataset to build contiguous partitions
+    std::map<std::string, std::vector<SpeciationMapping>> mappings_by_dataset;
+    for (const auto& mapping : config.mappings) {
+        std::string ds = mapping.dataset.empty() ? config.dataset_name : mapping.dataset;
+        mappings_by_dataset[ds].push_back(mapping);
+    }
+
+    std::vector<SpeciationMapping> sorted_mappings;
+
+    for (const auto& [ds_name, ds_mappings] : mappings_by_dataset) {
+        int start_offset = static_cast<int>(sorted_mappings.size());
+        int count = static_cast<int>(ds_mappings.size());
+        dataset_offsets_[ds_name] = {start_offset, count};
+        sorted_mappings.insert(sorted_mappings.end(), ds_mappings.begin(), ds_mappings.end());
+    }
+
+    // Flatten partitioned mappings into parallel host arrays
     auto h_scale_factors = Kokkos::create_mirror_view(Kokkos::View<double*, Kokkos::DefaultExecutionSpace>("scale_factors", num_mappings_));
     auto h_class_indices = Kokkos::create_mirror_view(Kokkos::View<int*, Kokkos::DefaultExecutionSpace>("class_indices", num_mappings_));
     auto h_mechanism_indices = Kokkos::create_mirror_view(Kokkos::View<int*, Kokkos::DefaultExecutionSpace>("mechanism_indices", num_mappings_));
 
     for (int m = 0; m < num_mappings_; ++m) {
-        const auto& mapping = config.mappings[m];
+        const auto& mapping = sorted_mappings[m];
 
         h_scale_factors(m) = mapping.scale_factor;
         h_class_indices(m) = static_cast<int>(mapping.emission_class);
@@ -85,7 +103,8 @@ void SpeciationEngine::Initialize(const SpeciationConfig& config) {
     Kokkos::deep_copy(mechanism_indices_, h_mechanism_indices);
     Kokkos::deep_copy(molecular_weights_, h_molecular_weights);
 
-    std::cout << "SpeciationEngine: Initialized with " << num_mappings_ << " mappings and " << num_mechanism_species_ << " mechanism species.\n";
+    std::cout << "SpeciationEngine: Initialized with " << num_mappings_ << " mappings, " << dataset_offsets_.size() << " datasets, and "
+              << num_mechanism_species_ << " mechanism species.\n";
 }
 
 void SpeciationEngine::Run(const Kokkos::View<const double**, Kokkos::LayoutLeft, Kokkos::DefaultExecutionSpace>& class_totals,

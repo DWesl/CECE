@@ -19,6 +19,7 @@
 
 #include <Kokkos_Core.hpp>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "cece/cece_state.hpp"
@@ -63,6 +64,9 @@ class SpeciationEngine {
     [[nodiscard]] const std::vector<std::string>& GetMechanismSpeciesNames() const;
 
    private:
+    /// Offset and count mapping for each dataset name: dataset_name -> (start_offset, count)
+    std::unordered_map<std::string, std::pair<int, int>> dataset_offsets_;
+
     /// @name Device-side lookup tables for speciation (one entry per mapping)
     /// @{
 
