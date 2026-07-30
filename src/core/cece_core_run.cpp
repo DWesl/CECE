@@ -59,8 +59,10 @@ void cece_core_run(void* data_ptr, int hour, int day_of_week, int* rc) {
             // Clock-gated execution: only run due components
             cece::StepResult step = d->clock->Advance();
 
-            if (step.simulation_complete) {
-                *rc = 1;
+            if (step.due_components.empty()) {
+                if (step.simulation_complete) {
+                    *rc = 1;
+                }
                 return;
             }
 
@@ -116,6 +118,10 @@ void cece_core_run(void* data_ptr, int hour, int day_of_week, int* rc) {
                     }
                 }
             }
+
+            if (step.simulation_complete) {
+                *rc = 1;
+            }
         } else {
             // Backward compatibility: no clock, execute all components unconditionally
             std::cout << "CECE_Run: executing step (hour=" << hour << ", day_of_week=" << day_of_week << ")\n";
@@ -130,7 +136,6 @@ void cece_core_run(void* data_ptr, int hour, int day_of_week, int* rc) {
                     std::cerr << "CECE_Run: ingest failed (unknown)\n";
                 }
             }
-
             if (d->stacking_engine) {
                 cece::CeceStateResolver resolver(d->import_state, d->export_state, d->config.met_mapping, d->config.scale_factor_mapping,
                                                  d->config.mask_mapping);
@@ -148,9 +153,19 @@ void cece_core_run(void* data_ptr, int hour, int day_of_week, int* rc) {
             }
         }
 
-        // Sync fields for ESMF access
+        // Mark all export fields as modified on the device since they are computed on the device
+        // by the Stacking Engine and physics schemes, ensuring Kokkos copies device updates to host.
+        // Also copy the synced host values of managed views back to the persistent unmanaged ESMF pointers!
         for (auto& [name, field] : d->export_state.fields) {
+            field.modify<Kokkos::DefaultExecutionSpace>();
             field.sync_host();
+
+            auto it = d->persistent_export_ptrs.find(name);
+            if (it != d->persistent_export_ptrs.end() && it->second != nullptr) {
+                using UnmanagedHost = Kokkos::View<double***, Kokkos::LayoutLeft, Kokkos::HostSpace, Kokkos::MemoryTraits<Kokkos::Unmanaged>>;
+                UnmanagedHost h_view(it->second, d->nx, d->ny, d->nz);
+                Kokkos::deep_copy(h_view, field.view_host());
+            }
         }
 
         // Also sync import state fields to ensure ESMF can access them

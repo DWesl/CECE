@@ -163,15 +163,24 @@ RecordBracket cadence_record_bracket(const std::string& cadence, const std::stri
 
 }  // namespace
 
-CeceDriverOrchestrator::CeceDriverOrchestrator(const std::string& config_file, int nx, int ny, int nz, const double* lon_coords,
-                                               const double* lat_coords, MPI_Comm comm_c)
+CeceDriverOrchestrator::CeceDriverOrchestrator(const std::string& config_file, int nx, int ny, int nz, const double* lon_coords, int lon_len,
+                                               const double* lat_coords, int lat_len, MPI_Comm comm_c)
     : config_file_(config_file),
       nx_(nx),
       ny_(ny),
       nz_(nz),
-      target_lons_(lon_coords, lon_coords + nx),
-      target_lats_(lat_coords, lat_coords + ny),
+      target_lons_(lon_coords, lon_coords + lon_len),
+      target_lats_(lat_coords, lat_coords + lat_len),
       comm_c_(comm_c) {
+    try {
+        YAML::Node config = YAML::LoadFile(config_file_);
+        if (config["driver"] && config["driver"]["gridspec_file"]) {
+            gridspec_file_ = config["driver"]["gridspec_file"].as<std::string>();
+        }
+    } catch (const YAML::Exception& e) {
+        gridspec_file_ = "";
+    }
+
     cece_io_ = std::make_unique<io::CeceIO>();
     cece_io_->Initialize(config_file_, nx_, ny_, nz_);
     CompileHelmGraph(config_file_, dagr_, *cece_io_, comm_c_);
@@ -348,7 +357,7 @@ bool CeceDriverOrchestrator::AdvanceTime(const std::string& time_iso8601, void* 
                 MPI_Barrier(comm_c_);
             }
 
-            // Temporarily force serial nc_open read fallback to improve portability.
+            // Force serial I/O fallback for reading offline datasets to prevent MPI multithreading deadlocks.
             if (mpi_initialized) {
                 amio_set_parent_communicator(MPI_Comm_c2f(MPI_COMM_SELF));
             }
@@ -440,7 +449,7 @@ bool CeceDriverOrchestrator::AdvanceTime(const std::string& time_iso8601, void* 
             auto plan_it = regrid_plans_.find(var_name);
             if (plan_it == regrid_plans_.end() || !plan_it->second.built) {
                 cece::io::RegridPlan plan;
-                if (!cece::io::build_regrid_plan(read_dataset, nx_, ny_, target_lons_, target_lats_, mapalgo, j0, j1, plan)) {
+                if (!cece::io::build_regrid_plan(read_dataset, nx_, ny_, target_lons_, target_lats_, mapalgo, j0, j1, gridspec_file_, plan)) {
                     std::cout << "[DRIVER DEBUG] build_regrid_plan failed for '" << var_name << "'" << std::endl;
                     failure_detail = "regrid plan construction failed (could not read source grid coordinates)";
                 } else {
@@ -568,6 +577,31 @@ bool CeceDriverOrchestrator::AdvanceTime(const std::string& time_iso8601, void* 
                             }
                         }
                         Kokkos::deep_copy(stream_view, h_view);
+
+                        // Also directly populate the C++ Core's import state fields to guarantee
+                        // parallel-safe and synchronized import states across the driver facade and compute core!
+                        auto* d = static_cast<cece::CeceInternalData*>(cece_core_data_ptr);
+                        auto it_core = d->import_state.fields.find(var_name);
+                        if (it_core == d->import_state.fields.end()) {
+                            // Dynamically allocate the import field DualView inside the core
+                            cece::DualView3D dv(var_name, nx_, ny_, nz_);
+                            d->import_state.fields[var_name] = dv;
+                            it_core = d->import_state.fields.find(var_name);
+                        }
+
+                        if (it_core != d->import_state.fields.end()) {
+                            auto& core_field = it_core->second;
+                            auto h_view_core = Kokkos::create_mirror_view(core_field.view_device());
+                            for (int j = 0; j < ny_; ++j) {
+                                for (int i = 0; i < nx_; ++i) {
+                                    h_view_core(i, j, 0) = full_dst[static_cast<size_t>(j) * nx_ + i];
+                                }
+                            }
+                            Kokkos::deep_copy(core_field.view_device(), h_view_core);
+                            core_field.modify_device();
+                            core_field.sync_host();
+                        }
+
                         read_success = true;
                     } else {
                         std::cout << "[DRIVER DEBUG] apply_regrid_plan returned false!" << std::endl;
@@ -616,8 +650,8 @@ bool CeceDriverOrchestrator::AdvanceTime(const std::string& time_iso8601, void* 
 extern "C" {
 void amio_set_parent_communicator(MPI_Fint comm);
 
-void cece_driver_create(const char* yaml_path, int path_len, int nx, int ny, int nz, const double* lon_coords, const double* lat_coords,
-                        int mpi_comm_f, void** driver_ptr_out, int* rc) {
+void cece_driver_create(const char* yaml_path, int path_len, int nx, int ny, int nz, const double* lon_coords, int lon_len, const double* lat_coords,
+                        int lat_len, int mpi_comm_f, void** driver_ptr_out, int* rc) {
     if (rc) *rc = 0;
     try {
         std::string path(yaml_path, path_len);
@@ -629,7 +663,7 @@ void cece_driver_create(const char* yaml_path, int path_len, int nx, int ny, int
         MPI_Comm comm_c = MPI_Comm_f2c(static_cast<MPI_Fint>(mpi_comm_f));
 
         // 3. Create orchestrator using the custom communicator
-        auto* driver = new cece::CeceDriverOrchestrator(path, nx, ny, nz, lon_coords, lat_coords, comm_c);
+        auto* driver = new cece::CeceDriverOrchestrator(path, nx, ny, nz, lon_coords, lon_len, lat_coords, lat_len, comm_c);
         *driver_ptr_out = static_cast<void*>(driver);
     } catch (const std::exception& e) {
         std::cerr << "ERROR: cece_driver_create: " << e.what() << std::endl;

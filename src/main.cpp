@@ -19,6 +19,24 @@
 #include "cece/cece_driver_facade.hpp"
 #include "cece/cece_fatal.hpp"
 
+namespace {
+
+inline double wrap_longitude(double lon) {
+    if (lon >= 180.0) {
+        return lon - 360.0;
+    }
+    if (lon < -180.0) {
+        return lon + 360.0;
+    }
+    return lon;
+}
+
+inline double radians_to_degrees(double rad) {
+    return rad * 180.0 / M_PI;
+}
+
+}  // namespace
+
 // CECE Core C-Linkage Lifecycle functions
 extern "C" {
 void cece_set_config_file_path(const char* config_path, int path_len);
@@ -29,15 +47,15 @@ void cece_core_initialize_p2(void* data_ptr, int* nx, int* ny, int* nz, int* rc)
 void cece_core_run(void* data_ptr, int hour, int day_of_week, int* rc);
 void cece_core_finalize(void* data_ptr, int* rc);
 void cece_core_writer_initialize(void* data_ptr, int nx, int ny, int nz, const char* start_time_iso8601, int start_time_len, int mpi_comm_f, int* rc);
-void cece_core_writer_initialize_with_coords(void* data_ptr, int nx, int ny, int nz, const double* lon_coords, const double* lat_coords,
-                                             const char* start_time_iso8601, int start_time_len, int mpi_comm_f, int* rc);
+void cece_core_writer_initialize_with_coords(void* data_ptr, int nx, int ny, int nz, const double* lon_coords, int lon_len, const double* lat_coords,
+                                             int lat_len, const char* start_time_iso8601, int start_time_len, int mpi_comm_f, int* rc);
 void cece_core_write_step(void* data_ptr, double time_seconds, int step_index, int* rc);
 void cece_core_set_export_field(void* data_ptr, const char* name, int name_len, const double* field_data, int nx, int ny, int nz, int* rc);
 }
 
 extern "C" {
-void cece_driver_create(const char* yaml_path, int path_len, int nx, int ny, int nz, const double* lon_coords, const double* lat_coords,
-                        int mpi_comm_f, void** driver_ptr_out, int* rc);
+void cece_driver_create(const char* yaml_path, int path_len, int nx, int ny, int nz, const double* lon_coords, int lon_len, const double* lat_coords,
+                        int lat_len, int mpi_comm_f, void** driver_ptr_out, int* rc);
 }
 
 int main(int argc, char* argv[]) {
@@ -157,7 +175,7 @@ int main(int argc, char* argv[]) {
 
         // Setup CECE grid coordinate arrays (either generated dynamically from NamedGridRegistry, or calculated uniformly)
         std::vector<double> file_lons(nx, 0.0);
-        std::vector<double> file_lats(ny, 0.0);
+        std::vector<double> file_lats(ny == 1 ? nx : ny, 0.0);
         bool has_file_coords = false;
 
         if (!grid_name.empty()) {
@@ -165,11 +183,7 @@ int main(int argc, char* argv[]) {
                 auto mesh = axis::topology::NamedGridRegistry::generate<Kokkos::HostSpace>(grid_name);
                 auto coords = mesh.node_coords();
                 for (int i = 0; i < nx; ++i) {
-                    double lon = coords(i, 0);
-                    if (lon >= 180.0) {
-                        lon -= 360.0;
-                    }
-                    file_lons[i] = lon;
+                    file_lons[i] = wrap_longitude(coords(i, 0));
                 }
                 for (int j = 0; j < ny; ++j) {
                     file_lats[j] = coords(j * nx, 1);
@@ -183,12 +197,23 @@ int main(int argc, char* argv[]) {
             }
         } else {
             bool loaded_from_file = false;
-            std::string input_file_path = "../scripts/data/MACCity_4x5.nc";  // default fallback
-            if (config["cece_data"] && config["cece_data"]["streams"]) {
+            bool is_explicit_gridspec = false;
+            std::string input_file_path = "";
+            if (config["driver"] && config["driver"]["gridspec_file"]) {
+                std::string gf = config["driver"]["gridspec_file"].as<std::string>();
+                if (!gf.empty() && gf != "none" && gf != "NONE") {
+                    input_file_path = gf;
+                    is_explicit_gridspec = true;
+                }
+            }
+            if (input_file_path.empty() && config["cece_data"] && config["cece_data"]["streams"]) {
                 auto stream = config["cece_data"]["streams"][0];
                 if (stream["file"]) {
                     input_file_path = stream["file"].as<std::string>();
                 }
+            }
+            if (input_file_path.empty()) {
+                input_file_path = "../scripts/data/MACCity_4x5.nc";  // default fallback
             }
 
             std::string read_manifest_path = "amio_coord_manifest.yaml";
@@ -221,38 +246,86 @@ int main(int argc, char* argv[]) {
                     std::vector<double> file_lon_coords;
                     std::vector<double> file_lat_coords;
 
-                    if (amio_read(coord_dataset, "lon", 0, nullptr, &lon_view) == AMIO_OK) {
+                    static const std::vector<std::string> kLonNames = {
+                        "grid_lont", "grid_lon", "XLONG",   "lonCell", "geolon",      "clon",          "glamt",  "mesh2d_face_lon", "lon",
+                        "longitude", "LON",      "lon_rho", "nav_lon", "mesh_node_x", "mesh2d_node_x", "node_x", "grid_xt",         "x"};
+                    bool is_radian = false;
+                    amio_status_t lon_status = static_cast<amio_status_t>(-1);
+                    for (const auto& name : kLonNames) {
+                        lon_status = amio_read(coord_dataset, name.c_str(), 0, nullptr, &lon_view);
+                        if (lon_status == AMIO_OK) {
+                            if (name == "lonCell" || name == "latCell" || name == "lonVertex" || name == "latVertex") {
+                                is_radian = true;
+                            }
+                            break;
+                        }
+                    }
+
+                    if (lon_status == AMIO_OK) {
                         const void* view_data = nullptr;
                         size_t view_size = 0;
                         if (amio_view_data(lon_view, &view_data, &view_size) == AMIO_OK) {
                             amio_shape_t lon_shape{};
                             if (amio_view_shape(lon_view, &lon_shape) == AMIO_OK) {
-                                file_nx = static_cast<int>(lon_shape.extents[0]);
-                                bool is_float = (view_size == static_cast<size_t>(file_nx) * 4);
+                                if (lon_shape.rank == 1) {
+                                    file_nx = static_cast<int>(lon_shape.extents[0]);
+                                } else if (lon_shape.rank == 2) {
+                                    file_nx = static_cast<int>(lon_shape.extents[1]);
+                                }
+                                int total_len = 1;
+                                for (int r = 0; r < lon_shape.rank; ++r) {
+                                    total_len *= static_cast<int>(lon_shape.extents[r]);
+                                }
+                                bool is_float = (view_size == static_cast<size_t>(total_len) * 4);
                                 const float* float_data = static_cast<const float*>(view_data);
                                 const double* double_data = static_cast<const double*>(view_data);
-                                file_lon_coords.resize(file_nx);
-                                for (int i = 0; i < file_nx; ++i) {
-                                    file_lon_coords[i] = is_float ? static_cast<double>(float_data[i]) : double_data[i];
+                                file_lon_coords.resize(total_len);
+                                for (int i = 0; i < total_len; ++i) {
+                                    double val = is_float ? static_cast<double>(float_data[i]) : double_data[i];
+                                    if (is_radian) {
+                                        val = radians_to_degrees(val);
+                                    }
+                                    file_lon_coords[i] = wrap_longitude(val);
                                 }
                             }
                         }
                         amio_release_view(lon_view);
                     }
 
-                    if (amio_read(coord_dataset, "lat", 0, nullptr, &lat_view) == AMIO_OK) {
+                    static const std::vector<std::string> kLatNames = {
+                        "grid_latt", "grid_lat", "XLAT",    "latCell", "geolat",      "clat",          "gphit",  "mesh2d_face_lat", "lat",
+                        "latitude",  "LAT",      "lat_rho", "nav_lat", "mesh_node_y", "mesh2d_node_y", "node_y", "grid_yt",         "y"};
+                    amio_status_t lat_status = static_cast<amio_status_t>(-1);
+                    for (const auto& name : kLatNames) {
+                        lat_status = amio_read(coord_dataset, name.c_str(), 0, nullptr, &lat_view);
+                        if (lat_status == AMIO_OK) {
+                            break;
+                        }
+                    }
+
+                    if (lat_status == AMIO_OK) {
                         const void* view_data = nullptr;
                         size_t view_size = 0;
                         if (amio_view_data(lat_view, &view_data, &view_size) == AMIO_OK) {
                             amio_shape_t lat_shape{};
                             if (amio_view_shape(lat_view, &lat_shape) == AMIO_OK) {
-                                file_ny = static_cast<int>(lat_shape.extents[0]);
-                                bool is_float = (view_size == static_cast<size_t>(file_ny) * 4);
+                                if (lat_shape.rank == 1 || lat_shape.rank == 2) {
+                                    file_ny = static_cast<int>(lat_shape.extents[0]);
+                                }
+                                int total_len = 1;
+                                for (int r = 0; r < lat_shape.rank; ++r) {
+                                    total_len *= static_cast<int>(lat_shape.extents[r]);
+                                }
+                                bool is_float = (view_size == static_cast<size_t>(total_len) * 4);
                                 const float* float_data = static_cast<const float*>(view_data);
                                 const double* double_data = static_cast<const double*>(view_data);
-                                file_lat_coords.resize(file_ny);
-                                for (int j = 0; j < file_ny; ++j) {
-                                    file_lat_coords[j] = is_float ? static_cast<double>(float_data[j]) : double_data[j];
+                                file_lat_coords.resize(total_len);
+                                for (int j = 0; j < total_len; ++j) {
+                                    double val = is_float ? static_cast<double>(float_data[j]) : double_data[j];
+                                    if (is_radian) {
+                                        val = radians_to_degrees(val);
+                                    }
+                                    file_lat_coords[j] = val;
                                 }
                             }
                         }
@@ -261,7 +334,15 @@ int main(int argc, char* argv[]) {
 
                     amio_close(coord_dataset);
 
-                    if (nx == file_nx && ny == file_ny && file_nx > 0 && file_ny > 0) {
+                    // If nx and ny are not specified in the configuration, dynamically inherit them from the gridspec file
+                    if (nx == 0 && file_nx > 0) {
+                        nx = file_nx;
+                    }
+                    if (ny == 0 && file_ny > 0) {
+                        ny = (file_ny == file_nx) ? 1 : file_ny;
+                    }
+
+                    if (nx == file_nx && (ny == file_ny || (ny == 1 && file_ny == file_nx)) && file_nx > 0 && file_ny > 0) {
                         file_lons = file_lon_coords;
                         file_lats = file_lat_coords;
                         loaded_from_file = true;
@@ -270,6 +351,12 @@ int main(int argc, char* argv[]) {
                 amio_finalize(coord_core);
             }
             std::remove(read_manifest_path.c_str());
+
+            if (is_explicit_gridspec && !loaded_from_file) {
+                std::cerr << "FATAL ERROR: Failed to load gridspec coordinates from explicitly specified gridspec file '" << input_file_path << "'"
+                          << std::endl;
+                return -1;
+            }
 
             if (!loaded_from_file) {
                 double lon_min = -180.0;
@@ -301,14 +388,16 @@ int main(int argc, char* argv[]) {
         // 5. Initialize the cece_driver orchestrator facade
         void* cece_driver_data = nullptr;
         int mpi_comm_f = MPI_Comm_c2f(MPI_COMM_WORLD);
-        cece_driver_create(config_file.c_str(), static_cast<int>(config_file.length()), nx, ny, nz, file_lons.data(), file_lats.data(), mpi_comm_f,
-                           &cece_driver_data, &rc);
+        cece_driver_create(config_file.c_str(), static_cast<int>(config_file.length()), nx, ny, nz, file_lons.data(),
+                           static_cast<int>(file_lons.size()), file_lats.data(), static_cast<int>(file_lats.size()), mpi_comm_f, &cece_driver_data,
+                           &rc);
 
         // Standalone Writer: Initialize output writing if configured
         int writer_comm_f = MPI_Comm_c2f(MPI_COMM_WORLD);
         if (has_file_coords) {
-            cece_core_writer_initialize_with_coords(cece_data_ptr, nx, ny, nz, file_lons.data(), file_lats.data(), start_time_str.c_str(),
-                                                    start_time_str.length(), writer_comm_f, &rc);
+            cece_core_writer_initialize_with_coords(cece_data_ptr, nx, ny, nz, file_lons.data(), static_cast<int>(file_lons.size()), file_lats.data(),
+                                                    static_cast<int>(file_lats.size()), start_time_str.c_str(), start_time_str.length(),
+                                                    writer_comm_f, &rc);
         } else {
             cece_core_writer_initialize(cece_data_ptr, nx, ny, nz, start_time_str.c_str(), start_time_str.length(), writer_comm_f, &rc);
         }
