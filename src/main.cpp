@@ -18,6 +18,7 @@
 #include "cece/cece_config.hpp"
 #include "cece/cece_driver_facade.hpp"
 #include "cece/cece_fatal.hpp"
+#include "cece/cece_logger.hpp"
 
 namespace {
 
@@ -135,7 +136,7 @@ int main(int argc, char* argv[]) {
             }
         }
 
-        std::cout << "[DRIVER DEBUG] Parsed nx = " << nx << ", ny = " << ny << ", grid_name = '" << grid_name << "'" << std::endl;
+        CECE_LOG_DEBUG("[DRIVER] Parsed nx = " + std::to_string(nx) + ", ny = " + std::to_string(ny) + ", grid_name = '" + grid_name + "'");
 
         // B. Simulation Clock Timing
         std::string start_time_str = config["driver"]["start_time"].as<std::string>();
@@ -403,7 +404,8 @@ int main(int argc, char* argv[]) {
         }
 
         if (my_rank == 0) {
-            std::cout << "[DRIVER] Initialization completed on " << nx << "x" << ny << "x" << nz << " grid. Entering run loop..." << std::endl;
+            CECE_LOG_INFO("[DRIVER] Initialization completed on " + std::to_string(nx) + "x" + std::to_string(ny) + "x" + std::to_string(nz) +
+                          " grid. Entering run loop...");
         }
 
         // 6. Event-driven simulation run loop
@@ -413,7 +415,7 @@ int main(int argc, char* argv[]) {
             tick::Date_Time current_dt = cal.to_date_time(sim_time);
 
             if (my_rank == 0) {
-                std::cout << "[DRIVER] Advancing simulation to: " << tick::format_iso8601(current_dt) << std::endl;
+                CECE_LOG_INFO("[DRIVER] Advancing simulation to: " + tick::format_iso8601(current_dt));
             }
 
             std::string time_str = tick::format_iso8601(current_dt);
@@ -445,7 +447,7 @@ int main(int argc, char* argv[]) {
 
         // 7. Cleanup and release resources
         if (my_rank == 0) {
-            std::cout << "[DRIVER] Standalone execution completed. Cleaning up..." << std::endl;
+            CECE_LOG_INFO("[DRIVER] Standalone execution completed. Cleaning up...");
         }
 
         cece_driver_destroy(cece_driver_data);
