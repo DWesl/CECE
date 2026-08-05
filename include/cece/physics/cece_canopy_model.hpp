@@ -68,7 +68,7 @@ double compute_leaf_temperature(double air_temp, double par_absorbed, double win
     // delta_T depends on absorbed radiation and wind-driven convective cooling
 
     // Ensure minimum wind speed to avoid division by zero
-    double ws = (wind_speed > 0.1) ? wind_speed : 0.1;
+    double ws = std::max(wind_speed, 0.1);
 
     // Canopy depth fraction at this layer
     double depth = gauss_points[layer_idx];
