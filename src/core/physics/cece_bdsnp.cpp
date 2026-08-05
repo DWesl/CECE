@@ -89,7 +89,7 @@ double bdsnp_soil_wet_term(double gw, double wet_c1, double wet_c2) {
  */
 KOKKOS_INLINE_FUNCTION
 double bdsnp_moisture_factor(double soil_moisture) {
-    double sm = (soil_moisture > 1.0) ? 1.0 : soil_moisture;
+    double sm = std::max(soil_moisture, 1.0);
     if (sm <= 0.0) {
         return 0.0;
     }
