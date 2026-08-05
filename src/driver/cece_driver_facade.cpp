@@ -230,7 +230,8 @@ CeceDriverOrchestrator::CeceDriverOrchestrator(const std::string& config_file, i
             }
         }
     } catch (const conf::Conf_Error&) {
-        gridspec_file_ = "";
+        CECE_LOG_ERROR("[DRIVER] Failed to parse config file '" + config_file_ + "'.");
+        throw;
     }
 
     cece_io_ = std::make_unique<io::CeceIO>();
