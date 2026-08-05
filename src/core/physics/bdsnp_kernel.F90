@@ -63,10 +63,7 @@ contains
         real(c_double) :: f
         real(c_double) :: sm
 
-        sm = soil_moisture
-        if (sm > 1.0d0) then
-            sm = 1.0d0
-        end if
+        sm = min(soil_moisture, 1.0d0)
 
         if (sm <= 0.0d0) then
             f = 0.0d0
