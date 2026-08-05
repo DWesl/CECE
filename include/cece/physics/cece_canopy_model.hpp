@@ -94,7 +94,7 @@ double compute_leaf_temperature(double air_temp, double par_absorbed, double win
     }
 
     // Clamp delta_T to reasonable range [-10, +10] K
-    delta_t = std::min(std::max(delta_t, -10.0), 10.0);
+    delta_t = std::clamp(delta_t, -10.0, 10.0);
 
     double safe_air_temp = (air_temp > 200.0) ? air_temp : 200.0;
     return safe_air_temp + delta_t;
