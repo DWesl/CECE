@@ -215,12 +215,8 @@ contains
       if (pio_rc == pio_noerr) then
         att_len = len_trim(str_val)
         if (att_len > 0) then
-          if (index(str_val(1:att_len), 'CF-1.6') > 0 .or. &
-              index(str_val(1:att_len), 'CF-1.7') > 0 .or. &
-              index(str_val(1:att_len), 'CF-1.8') > 0 .or. &
-              index(str_val(1:att_len), 'CF-1.9') > 0) then
-            cache%cf_version = trim(str_val(1:att_len))
-            cache%is_cf_compliant = .true.
+          call find_cf_version(str_val(1:att_len), cache%is_cf_compliant, cache%cf_version)
+          if (cache%is_cf_compliant) then
             call cf_log(2, 'cf_read_file_metadata: Detected CF Conventions: '// &
                            trim(str_val(1:att_len))//' for file: '//trim(filename))
           else if (index(str_val(1:att_len), 'COARDS') > 0) then
@@ -337,6 +333,36 @@ contains
     call pio_closefile(pio_file)
     cache%ncid = 0
 
+  contains
+    subroutine find_cf_version(conventions_str, is_cf, cf_version)
+      implicit none
+      character(len=*), intent(in) :: conventions_str
+      logical, intent(out) :: is_cf
+      character(len=*), intent(out) :: cf_version
+      integer cf_start, cf_length, cf_end, conventions_len, cf_minor, iostat
+      cf_start = index(conventions_str, 'CF-1.')
+      conventions_len = len_trim(conventions_str)
+      if (cf_start + 5 > conventions_len) then
+         is_cf = .false.
+      else
+         cf_length = index(conventions_str(cf_start:conventions_len), ',') - 1
+         if (cf_length <= 0) then
+            cf_length = index(conventions_str(cf_start:conventions_len), ' ') - 1
+            if (cf_length <= 0) then
+               cf_length = conventions_len - cf_start + 1
+            end if
+         end if
+         cf_end = cf_length + cf_start - 1
+         iostat = 0
+         read(conventions_str(cf_start+5:cf_end), FMT=*, IOSTAT=iostat) cf_minor
+         if (iostat == 0) then
+            is_cf = .true.
+            cf_version = conventions_str(cf_start:cf_end)
+         else
+            is_cf = .false.
+         end if
+      end if
+    end subroutine find_cf_version
   end subroutine cf_read_file_metadata
 
   ! ===========================================================================
