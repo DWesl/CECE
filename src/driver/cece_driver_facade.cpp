@@ -5,6 +5,7 @@
 #include <Kokkos_Core.hpp>
 #include <algorithm>
 #include <axis/axis.hpp>
+#include <cctype>
 #include <conf/conf.hpp>
 #include <dagr/logging.hpp>
 #include <filesystem>
