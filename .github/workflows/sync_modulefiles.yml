@@ -59,7 +59,7 @@ jobs:
           # 2. Update internal string references now that files are renamed
           find modulefiles/ -type f -exec sed -i 's/ufs_common/cece_common/g' {} +
 
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.13"
 
