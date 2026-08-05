@@ -24,6 +24,10 @@ __pycache__/
 *.pyo
 .pytest_cache/
 
+# Python venv
+venv*/
+.venv*/
+
 # Temporary files
 *.tmp
 *.temp

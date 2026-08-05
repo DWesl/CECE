@@ -17,6 +17,7 @@
 #include "cece/cece_fatal.hpp"
 #include "cece/cece_helm_graph.hpp"
 #include "cece/cece_internal.hpp"
+#include "cece/cece_logger.hpp"
 #include "cece/cece_regridder_utils.hpp"
 #include "cece/cece_standalone_writer.hpp"
 
@@ -273,8 +274,8 @@ bool CeceDriverOrchestrator::AdvanceTime(const std::string& time_iso8601, void* 
                                 stream_data_model = "enhanced";
                                 stream_data_model_explicit = false;
                             } else {
-                                std::cout << "[DRIVER WARNING] Invalid stream data_model='" << requested_model << "' for stream variable '"
-                                          << var_name << "'; using default auto behavior (enhanced then classic fallback)." << std::endl;
+                                CECE_LOG_WARNING("[DRIVER] Invalid stream data_model='" + requested_model + "' for stream variable '" + var_name +
+                                                 "'; using default auto behavior (enhanced then classic fallback).");
                             }
                         }
                         found_var = true;
@@ -291,7 +292,7 @@ bool CeceDriverOrchestrator::AdvanceTime(const std::string& time_iso8601, void* 
             LogFatal("[DRIVER FATAL] File '" + input_file_path + "' does not exist or is unreadable on this node! (System error: " + fs_ec.message() +
                      ")");
         } else {
-            std::cout << "[DRIVER DEBUG] Input file '" << input_file_path << "' successfully verified on local filesystem." << std::endl;
+            CECE_LOG_DEBUG("[DRIVER] Input file '" + input_file_path + "' successfully verified on local filesystem.");
         }
 
         bool read_success = false;
@@ -376,8 +377,8 @@ bool CeceDriverOrchestrator::AdvanceTime(const std::string& time_iso8601, void* 
                 break;
             }
 
-            std::cout << "[DRIVER DEBUG] AMIO open attempt failed (data_model='" << candidate_model << "') with rc = " << amio_rc << " ("
-                      << amio_strerror(amio_rc) << ")" << std::endl;
+            CECE_LOG_DEBUG("[DRIVER] AMIO open attempt failed (data_model='" + candidate_model + "') with rc = " + std::to_string(amio_rc) + " (" +
+                           amio_strerror(amio_rc) + ")");
 
             if (read_dataset) {
                 amio_close(read_dataset);
@@ -390,12 +391,11 @@ bool CeceDriverOrchestrator::AdvanceTime(const std::string& time_iso8601, void* 
         }
 
         if (amio_rc != AMIO_OK) {
-            std::cout << "[DRIVER DEBUG] amio_open_dataset failed for " << input_file_path << " with rc = " << amio_rc << " ("
-                      << amio_strerror(amio_rc) << ") after trying data_model='" << active_data_model << "'" << std::endl;
+            CECE_LOG_DEBUG("[DRIVER] amio_open_dataset failed for " + input_file_path + " with rc = " + std::to_string(amio_rc) + " (" +
+                           amio_strerror(amio_rc) + ") after trying data_model='" + active_data_model + "'");
         } else {
             if (!stream_data_model_explicit && active_data_model != "enhanced") {
-                std::cout << "[DRIVER INFO] AMIO read manifest auto-fell back to data_model='" << active_data_model << "' for " << input_file_path
-                          << std::endl;
+                CECE_LOG_INFO("[DRIVER] AMIO read manifest auto-fell back to data_model='" + active_data_model + "' for " + input_file_path);
             }
 
             // Determine this rank's contiguous destination latitude band [j0, j1)
@@ -450,7 +450,7 @@ bool CeceDriverOrchestrator::AdvanceTime(const std::string& time_iso8601, void* 
             if (plan_it == regrid_plans_.end() || !plan_it->second.built) {
                 cece::io::RegridPlan plan;
                 if (!cece::io::build_regrid_plan(read_dataset, nx_, ny_, target_lons_, target_lats_, mapalgo, j0, j1, gridspec_file_, plan)) {
-                    std::cout << "[DRIVER DEBUG] build_regrid_plan failed for '" << var_name << "'" << std::endl;
+                    CECE_LOG_DEBUG("[DRIVER] build_regrid_plan failed for '" + var_name + "'");
                     failure_detail = "regrid plan construction failed (could not read source grid coordinates)";
                 } else {
                     plan_it = regrid_plans_.emplace(var_name, std::move(plan)).first;
@@ -478,6 +478,18 @@ bool CeceDriverOrchestrator::AdvanceTime(const std::string& time_iso8601, void* 
                     bracket.weight = 0.0;
                 }
 
+                // Diagnostic: report which time slice(s) are being read from the file.
+                if (bracket.i0 == bracket.i1 || bracket.weight == 0.0) {
+                    CECE_LOG_INFO("[DRIVER] Reading time slice " + std::to_string(bracket.i0) + "/" + std::to_string(file_nt) + " from '" +
+                                  input_file_path + "' for field '" + var_name + "'" +
+                                  (cadence.empty() ? " (cycling, step=" + std::to_string(step_index_) + ")"
+                                                   : " (cadence=" + cadence + ", time=" + time_iso8601 + ")"));
+                } else {
+                    CECE_LOG_INFO("[DRIVER] Interpolating time slices " + std::to_string(bracket.i0) + " & " + std::to_string(bracket.i1) + "/" +
+                                  std::to_string(file_nt) + " (w=" + std::to_string(bracket.weight) + ") from '" + input_file_path + "' for field '" +
+                                  var_name + "' (cadence=" + cadence + ", tintalgo=" + tintalgo + ", time=" + time_iso8601 + ")");
+                }
+
                 int file_nx = 0;
                 int file_ny = 0;
 
@@ -490,7 +502,8 @@ bool CeceDriverOrchestrator::AdvanceTime(const std::string& time_iso8601, void* 
                     amio_status_t rc = amio_read(read_dataset, input_var_name.c_str(), t_idx, nullptr, &slab_view);
                     if (rc != AMIO_OK) {
                         amio_rc = rc;
-                        std::cout << "[DRIVER DEBUG] amio_read('" << input_var_name << "', t=" << t_idx << ") failed with rc = " << rc << std::endl;
+                        CECE_LOG_DEBUG("[DRIVER] amio_read('" + input_var_name + "', t=" + std::to_string(t_idx) +
+                                       ") failed with rc = " + std::to_string(rc));
                         failure_detail =
                             std::string("amio_read('") + input_var_name + "') failed: rc=" + std::to_string(rc) + " (" + amio_strerror(rc) + ")";
                         return false;
@@ -533,6 +546,8 @@ bool CeceDriverOrchestrator::AdvanceTime(const std::string& time_iso8601, void* 
                     file_nx = fnx;
                     file_ny = fny;
                     amio_release_view(slab_view);
+                    CECE_LOG_DEBUG("[DRIVER] Read slab t=" + std::to_string(t_idx) + " for '" + input_var_name + "': " + std::to_string(fny) + "x" +
+                                   std::to_string(fnx) + " (" + std::to_string(spatial) + " elements, " + (is_float ? "float32" : "float64") + ")");
                     return true;
                 };
 
@@ -604,7 +619,7 @@ bool CeceDriverOrchestrator::AdvanceTime(const std::string& time_iso8601, void* 
 
                         read_success = true;
                     } else {
-                        std::cout << "[DRIVER DEBUG] apply_regrid_plan returned false!" << std::endl;
+                        CECE_LOG_DEBUG("[DRIVER] apply_regrid_plan returned false!");
                         failure_detail = "regrid weight application failed";
                     }
                 }
@@ -629,8 +644,7 @@ bool CeceDriverOrchestrator::AdvanceTime(const std::string& time_iso8601, void* 
                      ". Idealized fallback is disabled!");
             return false;
         } else {
-            std::cout << "[DRIVER DEBUG] AMIO read succeeded for field '" << var_name << "' - loaded real data from " << input_file_path << "!"
-                      << std::endl;
+            CECE_LOG_INFO("[DRIVER] AMIO read succeeded for field '" + var_name + "' - loaded real data from " + input_file_path);
         }
 
         // Ingest raw data pointer of stream view into CECE's ingestor cache

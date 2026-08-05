@@ -6,8 +6,8 @@
  * It coordinates data ingestion from TIDE streams, physics scheme execution,
  * and field stacking operations during each model timestep.
  *
- * The run phase operates independently of ESMF, receiving only time information
- * extracted by the Fortran cap. This design maintains separation of concerns
+ * The run phase operates independently of the host framework, receiving only time information
+ * extracted by the calling driver. This design maintains separation of concerns
  * and allows for easier testing and debugging.
  *
  * Key responsibilities:
@@ -16,8 +16,8 @@
  * - Emission layer stacking and combination
  * - Error handling and performance monitoring
  *
- * @note This is an ESMF-free C++ implementation called from Fortran cap
- * @note Time info (hour, day_of_week) extracted via ESMF_ClockGet in Fortran
+ * @note This is a framework-free C++ implementation called from the driver
+ * @note Time info (hour, day_of_week) extracted by the calling driver
  * @note No ESMC.h dependency for easier testing and deployment
  *
  * @author Barry Baker
@@ -41,7 +41,7 @@ extern "C" {
 /**
  * @brief CECE Run phase.
  * @param data_ptr    Pointer to CeceInternalData.
- * @param hour        Hour of day (0-23), extracted by Fortran cap from ESMF_Clock.
+ * @param hour        Hour of day (0-23), extracted by the driver from the simulation clock.
  * @param day_of_week Day of week (0=Sunday..6=Saturday).
  * @param rc          0 on success, 1 on simulation complete, -1 on failure.
  */
@@ -155,7 +155,7 @@ void cece_core_run(void* data_ptr, int hour, int day_of_week, int* rc) {
 
         // Mark all export fields as modified on the device since they are computed on the device
         // by the Stacking Engine and physics schemes, ensuring Kokkos copies device updates to host.
-        // Also copy the synced host values of managed views back to the persistent unmanaged ESMF pointers!
+        // Also copy the synced host values of managed views back to the persistent unmanaged export pointers!
         for (auto& [name, field] : d->export_state.fields) {
             field.modify<Kokkos::DefaultExecutionSpace>();
             field.sync_host();
@@ -168,7 +168,7 @@ void cece_core_run(void* data_ptr, int hour, int day_of_week, int* rc) {
             }
         }
 
-        // Also sync import state fields to ensure ESMF can access them
+        // Also sync import state fields to ensure the host framework can access them
         for (auto& [name, field] : d->import_state.fields) {
             field.sync_host();
         }
