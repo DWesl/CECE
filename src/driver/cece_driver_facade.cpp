@@ -1,11 +1,11 @@
 #include "cece/cece_driver_facade.hpp"
 
 #include <amio/amio.h>
-#include <yaml-cpp/yaml.h>
 
 #include <Kokkos_Core.hpp>
 #include <algorithm>
 #include <axis/axis.hpp>
+#include <conf/conf.hpp>
 #include <dagr/logging.hpp>
 #include <filesystem>
 #include <fstream>
@@ -173,12 +173,62 @@ CeceDriverOrchestrator::CeceDriverOrchestrator(const std::string& config_file, i
       target_lons_(lon_coords, lon_coords + lon_len),
       target_lats_(lat_coords, lat_coords + lat_len),
       comm_c_(comm_c) {
+    // Parse config once at construction using HELM CONF
     try {
-        YAML::Node config = YAML::LoadFile(config_file_);
-        if (config["driver"] && config["driver"]["gridspec_file"]) {
-            gridspec_file_ = config["driver"]["gridspec_file"].as<std::string>();
+        conf::Config cfg = conf::Config::from_file(config_file_);
+        gridspec_file_ = cfg.get_or<std::string>("driver.gridspec_file", "");
+
+        int amio_threads = cfg.get_or("driver.amio_worker_threads", 1);
+        if (amio_threads < 1) amio_threads = 1;
+
+        // Cache per-variable stream configuration
+        if (cfg.has("cece_data.streams")) {
+            conf::Value streams = cfg.at("cece_data.streams");
+            for (std::size_t si = 0; si < streams.size(); ++si) {
+                conf::Value stream = streams[si];
+                std::string stream_file = stream["file"].string_or("../scripts/data/MACCity_4x5.nc");
+                std::string stream_mapalgo = stream["mapalgo"].string_or("consd");
+                std::string stream_cadence = stream["cadence"].string_or("");
+                std::string stream_tintalgo = stream["tintalgo"].string_or("nearest");
+
+                // Parse data_model
+                std::string data_model = "enhanced";
+                bool data_model_explicit = false;
+                conf::Value dm_val = stream["data_model"];
+                if (dm_val.is_defined()) {
+                    std::string requested_model = dm_val.as_string();
+                    std::transform(requested_model.begin(), requested_model.end(), requested_model.begin(),
+                                   [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+                    if (requested_model == "classic" || requested_model == "enhanced") {
+                        data_model = requested_model;
+                        data_model_explicit = true;
+                    } else if (requested_model != "auto") {
+                        CECE_LOG_WARNING("[DRIVER] Invalid stream data_model='" + requested_model +
+                                         "'; using default auto behavior (enhanced then classic fallback).");
+                    }
+                }
+
+                // Map each variable in this stream to its config
+                conf::Value variables = stream["variables"];
+                for (std::size_t vi = 0; vi < variables.size(); ++vi) {
+                    conf::Value var = variables[vi];
+                    std::string model_name = var["model"].string_or("");
+                    if (model_name.empty()) continue;
+
+                    StreamVarConfig svc;
+                    svc.input_file_path = stream_file;
+                    svc.input_var_name = var["file"].string_or(model_name);
+                    svc.mapalgo = stream_mapalgo;
+                    svc.cadence = stream_cadence;
+                    svc.tintalgo = stream_tintalgo;
+                    svc.data_model = data_model;
+                    svc.data_model_explicit = data_model_explicit;
+                    svc.amio_threads = amio_threads;
+                    stream_var_configs_[model_name] = svc;
+                }
+            }
         }
-    } catch (const YAML::Exception& e) {
+    } catch (const conf::Conf_Error&) {
         gridspec_file_ = "";
     }
 
@@ -222,9 +272,6 @@ bool CeceDriverOrchestrator::AdvanceTime(const std::string& time_iso8601, void* 
     dagr_->advance_step();
     Kokkos::fence();
 
-    // Load full config to parse streams
-    YAML::Node config = YAML::LoadFile(config_file_);
-
     // Parse the current simulation datetime once. Streams that declare a
     // temporal cadence (hourly/weekly/monthly) use these calendar fields to
     // select the correct file record; streams without a cadence keep the
@@ -235,55 +282,27 @@ bool CeceDriverOrchestrator::AdvanceTime(const std::string& time_iso8601, void* 
     for (const auto& var_name : cece_io_->GetOutputVarNames()) {
         auto stream_view = cece_io_->GetFieldView(var_name);
 
-        // Parse input file path and variable name dynamically from YAML config cece_data block
-        std::string input_file_path = "../scripts/data/MACCity_4x5.nc";  // default fallback
-        std::string input_var_name = "MACCity";                          // default fallback
-        std::string mapalgo = "consd";                                   // default fallback
-        std::string stream_data_model = "enhanced";                      // default AMIO data model
-        std::string cadence;                                             // temporal cadence: hourly|weekly|monthly ("" -> legacy cycling)
-        std::string tintalgo = "nearest";                                // time-interp algorithm: linear|nearest
+        // Use cached stream configuration (parsed once at construction)
+        std::string input_file_path = "../scripts/data/MACCity_4x5.nc";
+        std::string input_var_name = "MACCity";
+        std::string mapalgo = "consd";
+        std::string stream_data_model = "enhanced";
+        std::string cadence;
+        std::string tintalgo = "nearest";
         bool stream_data_model_explicit = false;
-        if (config["cece_data"] && config["cece_data"]["streams"]) {
-            for (const auto& stream : config["cece_data"]["streams"]) {
-                bool found_var = false;
-                for (const auto& var : stream["variables"]) {
-                    if (var["model"] && var["model"].as<std::string>() == var_name) {
-                        if (stream["file"]) {
-                            input_file_path = stream["file"].as<std::string>();
-                        }
-                        if (var["file"]) {
-                            input_var_name = var["file"].as<std::string>();
-                        }
-                        if (stream["mapalgo"]) {
-                            mapalgo = stream["mapalgo"].as<std::string>();
-                        }
-                        if (stream["cadence"]) {
-                            cadence = stream["cadence"].as<std::string>();
-                        }
-                        if (stream["tintalgo"]) {
-                            tintalgo = stream["tintalgo"].as<std::string>();
-                        }
-                        if (stream["data_model"]) {
-                            std::string requested_model = stream["data_model"].as<std::string>();
-                            std::transform(requested_model.begin(), requested_model.end(), requested_model.begin(),
-                                           [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
-                            if (requested_model == "classic" || requested_model == "enhanced") {
-                                stream_data_model = requested_model;
-                                stream_data_model_explicit = true;
-                            } else if (requested_model == "auto") {
-                                stream_data_model = "enhanced";
-                                stream_data_model_explicit = false;
-                            } else {
-                                CECE_LOG_WARNING("[DRIVER] Invalid stream data_model='" + requested_model + "' for stream variable '" + var_name +
-                                                 "'; using default auto behavior (enhanced then classic fallback).");
-                            }
-                        }
-                        found_var = true;
-                        break;
-                    }
-                }
-                if (found_var) break;
-            }
+        int amio_threads = 1;
+
+        auto cfg_it = stream_var_configs_.find(var_name);
+        if (cfg_it != stream_var_configs_.end()) {
+            const StreamVarConfig& svc = cfg_it->second;
+            input_file_path = svc.input_file_path;
+            input_var_name = svc.input_var_name;
+            mapalgo = svc.mapalgo;
+            cadence = svc.cadence;
+            tintalgo = svc.tintalgo;
+            stream_data_model = svc.data_model;
+            stream_data_model_explicit = svc.data_model_explicit;
+            amio_threads = svc.amio_threads;
         }
 
         // Verify if the input file path exists and is accessible from this compute/login node
@@ -323,14 +342,6 @@ bool CeceDriverOrchestrator::AdvanceTime(const std::string& time_iso8601, void* 
 
         amio_status_t amio_rc = AMIO_ERR_BACKEND_FAILURE;
         std::string active_data_model = data_models_to_try.front();
-
-        int amio_threads = 1;
-        if (config["driver"] && config["driver"]["amio_worker_threads"]) {
-            amio_threads = config["driver"]["amio_worker_threads"].as<int>();
-            if (amio_threads < 1) {
-                amio_threads = 1;
-            }
-        }
 
         for (const auto& candidate_model : data_models_to_try) {
             active_data_model = candidate_model;

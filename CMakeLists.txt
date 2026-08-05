@@ -401,7 +401,7 @@ target_include_directories(
 
 target_link_libraries(
   cece_driver
-  PUBLIC cece_core amio_core HELM::SPAN blend axis HELM::DAGR HELM::HALO HELM::TICK
+  PUBLIC cece_core amio_core HELM::SPAN blend axis HELM::DAGR HELM::HALO HELM::TICK conf
 )
 
 # --- Backward-Compatibility target aliases ---
@@ -883,6 +883,6 @@ target_link_libraries(
     HELM::AXIS
     HELM::BLEND
     Kokkos::kokkos
-    yaml-cpp
+    conf
     MPI::MPI_CXX
 )

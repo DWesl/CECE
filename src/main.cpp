@@ -1,10 +1,10 @@
 #include <amio/amio.h>
 #include <mpi.h>
-#include <yaml-cpp/yaml.h>
 
 #include <Kokkos_Core.hpp>
 #include <axis/topology/named_grid_registry.hpp>
 #include <cmath>
+#include <conf/conf.hpp>
 #include <fstream>
 #include <halo/communicator.hpp>
 #include <halo/environment.hpp>
@@ -78,7 +78,7 @@ int main(int argc, char* argv[]) {
         }
 
         // --- Load configuration up front (grid, timing, streams parsed below) ---
-        YAML::Node config = YAML::LoadFile(config_file);
+        conf::Config config = conf::Config::from_file(config_file);
 
         // Configure run logging (optional log file, per-rank stdout suppression)
         // and print the startup banner. Shared with the NUOPC cap so behavior is
@@ -93,17 +93,12 @@ int main(int argc, char* argv[]) {
         int ny = 4;
         int nz = 1;
         std::string grid_name = "";
-        if (config["driver"] && config["driver"]["grid"]) {
-            auto grid_node = config["driver"]["grid"];
-            if (grid_node["nz"]) {
-                nz = grid_node["nz"].as<int>(1);
-            }
-            if (grid_node["grid_name"]) {
-                grid_name = grid_node["grid_name"].as<std::string>();
-            }
+        if (config.has("driver.grid")) {
+            nz = config.get_or("driver.grid.nz", 1);
+            grid_name = config.get_or<std::string>("driver.grid.grid_name", "");
             if (grid_name.empty()) {
-                nx = grid_node["nx"].as<int>(4);
-                ny = grid_node["ny"].as<int>(4);
+                nx = config.get_or("driver.grid.nx", 4);
+                ny = config.get_or("driver.grid.ny", 4);
             } else {
                 try {
                     auto parsed = axis::topology::NamedGridRegistry::parse(grid_name);
@@ -111,8 +106,8 @@ int main(int argc, char* argv[]) {
                         int expected_nx = 4 * parsed.number;
                         int expected_ny = 2 * parsed.number;
 
-                        int declared_nx = grid_node["nx"].as<int>(0);
-                        int declared_ny = grid_node["ny"].as<int>(0);
+                        int declared_nx = config.get_or("driver.grid.nx", 0);
+                        int declared_ny = config.get_or("driver.grid.ny", 0);
                         if (declared_nx != 0 && declared_ny != 0) {
                             if (declared_nx != expected_nx || declared_ny != expected_ny) {
                                 std::cerr << "ERROR: Grid dimensions nx=" << declared_nx << ", ny=" << declared_ny
@@ -139,9 +134,9 @@ int main(int argc, char* argv[]) {
         CECE_LOG_DEBUG("[DRIVER] Parsed nx = " + std::to_string(nx) + ", ny = " + std::to_string(ny) + ", grid_name = '" + grid_name + "'");
 
         // B. Simulation Clock Timing
-        std::string start_time_str = config["driver"]["start_time"].as<std::string>();
-        std::string end_time_str = config["driver"]["end_time"].as<std::string>();
-        int timestep_seconds = config["driver"]["timestep_seconds"].as<int>();
+        std::string start_time_str = config.get_string("driver.start_time");
+        std::string end_time_str = config.get_string("driver.end_time");
+        int timestep_seconds = config.get_int("driver.timestep_seconds");
 
         // 3. Initialize TICK Clock
         tick::Gregorian_Calendar cal;
@@ -200,17 +195,19 @@ int main(int argc, char* argv[]) {
             bool loaded_from_file = false;
             bool is_explicit_gridspec = false;
             std::string input_file_path = "";
-            if (config["driver"] && config["driver"]["gridspec_file"]) {
-                std::string gf = config["driver"]["gridspec_file"].as<std::string>();
-                if (!gf.empty() && gf != "none" && gf != "NONE") {
-                    input_file_path = gf;
-                    is_explicit_gridspec = true;
-                }
+            auto gridspec_opt = config.try_string("driver.gridspec_file");
+            if (gridspec_opt.has_value() && !gridspec_opt->empty() && *gridspec_opt != "none" && *gridspec_opt != "NONE") {
+                input_file_path = *gridspec_opt;
+                is_explicit_gridspec = true;
             }
-            if (input_file_path.empty() && config["cece_data"] && config["cece_data"]["streams"]) {
-                auto stream = config["cece_data"]["streams"][0];
-                if (stream["file"]) {
-                    input_file_path = stream["file"].as<std::string>();
+            if (input_file_path.empty() && config.has("cece_data.streams")) {
+                auto streams = config.at("cece_data.streams");
+                if (streams.size() > 0) {
+                    auto first_stream = streams[static_cast<std::size_t>(0)];
+                    auto file_val = first_stream["file"];
+                    if (file_val.is_defined()) {
+                        input_file_path = file_val.as_string();
+                    }
                 }
             }
             if (input_file_path.empty()) {
@@ -360,18 +357,10 @@ int main(int argc, char* argv[]) {
             }
 
             if (!loaded_from_file) {
-                double lon_min = -180.0;
-                double lon_max = 180.0;
-                double lat_min = -90.0;
-                double lat_max = 90.0;
-
-                if (config["driver"] && config["driver"]["grid"]) {
-                    auto grid_node = config["driver"]["grid"];
-                    lon_min = grid_node["lon_min"].as<double>(-180.0);
-                    lon_max = grid_node["lon_max"].as<double>(180.0);
-                    lat_min = grid_node["lat_min"].as<double>(-90.0);
-                    lat_max = grid_node["lat_max"].as<double>(90.0);
-                }
+                double lon_min = config.get_or("driver.grid.lon_min", -180.0);
+                double lon_max = config.get_or("driver.grid.lon_max", 180.0);
+                double lat_min = config.get_or("driver.grid.lat_min", -90.0);
+                double lat_max = config.get_or("driver.grid.lat_max", 90.0);
 
                 double dlon = (lon_max - lon_min) / nx;
                 double dlat = (lat_max - lat_min) / ny;
