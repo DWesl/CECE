@@ -15,7 +15,7 @@
 namespace cece {
 
 /// Per-variable stream configuration cached at construction time.
-/// Eliminates repeated YAML re-parsing on every timestep.
+/// Eliminates repeated config re-parsing on every timestep.
 struct StreamVarConfig {
     std::string input_file_path = "../scripts/data/MACCity_4x5.nc";
     std::string input_var_name = "MACCity";
