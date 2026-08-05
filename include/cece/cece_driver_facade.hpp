@@ -20,7 +20,7 @@ struct StreamVarConfig {
     std::string input_file_path = "../scripts/data/MACCity_4x5.nc";
     std::string input_var_name = "MACCity";
     std::string mapalgo = "consd";
-    std::string cadence;                    // "" means legacy step-index cycling
+    std::string cadence;  // "" means legacy step-index cycling
     std::string tintalgo = "nearest";
     std::string data_model = "enhanced";
     bool data_model_explicit = false;
