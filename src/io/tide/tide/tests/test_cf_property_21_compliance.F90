@@ -14,11 +14,11 @@ program test_cf_property_21_compliance
   implicit none
 
   integer :: rc, overall_rc, npass, nfail
-  character(len=8) :: versions(4)
+  character(len=8) :: versions(6)
   integer :: iv
 
   overall_rc = 0; npass = 0; nfail = 0
-  versions = ['CF-1.6  ', 'CF-1.7  ', 'CF-1.8  ', 'CF-1.9  ']
+  versions = ['CF-1.6  ', 'CF-1.7  ', 'CF-1.8  ', 'CF-1.9  ', 'CF-1.12 ', 'A,CF-1.6']
 
   call ESMF_Initialize(rc=rc)
   if (rc /= ESMF_SUCCESS) stop 1
@@ -44,7 +44,7 @@ program test_cf_property_21_compliance
   end if
 
   write(*,'(a,i0,a,i0,a,i0,a)') &
-    'Property 21: ', npass, '/6 passed (', nfail, ' failed)'
+    'Property 21: ', npass, '/8 passed (', nfail, ' failed)'
 
   call ESMF_Finalize(rc=rc)
   if (overall_rc /= 0) stop 1
