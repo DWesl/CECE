@@ -566,17 +566,17 @@ if(ESMF_FOUND)
   endif()
 endif()
 
-# C++ Tide Unit Tests
-add_executable(test_tide_cpp tests/test_tide_cpp.cpp)
+# C++ HELM Unit Tests
+add_executable(test_helm_cpp tests/test_helm_cpp.cpp)
 target_link_libraries(
-  test_tide_cpp
+  test_helm_cpp
   PRIVATE cece HELM::DAGR HELM::HALO HELM::TICK HELM::SPAN GTest::gtest
 )
-target_compile_definitions(test_tide_cpp PRIVATE CECE_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
+target_compile_definitions(test_helm_cpp PRIVATE CECE_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
 
 # Parity Regression Tests
-add_executable(test_tide_c_parity tests/test_tide_c_parity.cpp)
-target_link_libraries(test_tide_c_parity PRIVATE cece GTest::gtest_main)
+add_executable(test_regression_parity tests/test_regression_parity.cpp)
+target_link_libraries(test_regression_parity PRIVATE cece GTest::gtest_main)
 
 # Standalone NUOPC driver
 if(ESMF_FOUND)
@@ -728,8 +728,8 @@ gtest_discover_tests(test_megan3)
 gtest_discover_tests(test_cece_clock_properties)
 gtest_discover_tests(test_cece_clock_run_loop)
 gtest_discover_tests(test_bdsnp)
-gtest_discover_tests(test_tide_cpp PROPERTIES ENVIRONMENT "FI_PROVIDER=tcp;I_MPI_FABRICS=shm")
-gtest_discover_tests(test_tide_c_parity)
+gtest_discover_tests(test_helm_cpp PROPERTIES ENVIRONMENT "FI_PROVIDER=tcp;I_MPI_FABRICS=shm")
+gtest_discover_tests(test_regression_parity)
 
 if(ESMF_FOUND)
   gtest_discover_tests(

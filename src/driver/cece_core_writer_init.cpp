@@ -16,6 +16,30 @@ class CeceStandaloneWriter;
 }
 extern std::unique_ptr<cece::CeceStandaloneWriter> g_standalone_writer;
 
+namespace {
+
+void EnsureStandaloneWriter(cece::CeceInternalData* internal_data, int mpi_comm_f) {
+    if (!g_standalone_writer) {
+        auto output_config = internal_data->config.output_config;
+        if (output_config.amio_worker_threads == -1) {
+            output_config.amio_worker_threads = internal_data->config.driver_config.amio_worker_threads;
+        }
+        MPI_Comm comm = MPI_COMM_SELF;
+        int mpi_initialized = 0;
+        MPI_Initialized(&mpi_initialized);
+        if (mpi_initialized) {
+            MPI_Comm temp_comm = MPI_Comm_f2c(static_cast<MPI_Fint>(mpi_comm_f));
+            if (temp_comm != MPI_COMM_NULL) {
+                comm = temp_comm;
+            }
+        }
+        g_standalone_writer = std::make_unique<cece::CeceStandaloneWriter>(output_config, comm);
+        std::atexit([]() { g_standalone_writer.reset(); });
+    }
+}
+
+}  // namespace
+
 extern "C" {
 
 /**
@@ -56,24 +80,7 @@ void cece_core_writer_initialize_with_coords(void* data_ptr, int nx, int ny, int
 
     try {
         auto* internal_data = static_cast<cece::CeceInternalData*>(data_ptr);
-
-        if (!g_standalone_writer) {
-            auto output_config = internal_data->config.output_config;
-            if (output_config.amio_worker_threads == -1) {
-                output_config.amio_worker_threads = internal_data->config.driver_config.amio_worker_threads;
-            }
-            MPI_Comm comm = MPI_COMM_SELF;
-            int mpi_initialized = 0;
-            MPI_Initialized(&mpi_initialized);
-            if (mpi_initialized) {
-                MPI_Comm temp_comm = MPI_Comm_f2c(static_cast<MPI_Fint>(mpi_comm_f));
-                if (temp_comm != MPI_COMM_NULL) {
-                    comm = temp_comm;
-                }
-            }
-            g_standalone_writer = std::make_unique<cece::CeceStandaloneWriter>(output_config, comm);
-            std::atexit([]() { g_standalone_writer.reset(); });
-        }
+        EnsureStandaloneWriter(internal_data, mpi_comm_f);
 
         // Convert C string to std::string
         std::string start_time(start_time_iso8601, start_time_len);
@@ -138,24 +145,7 @@ void cece_core_writer_initialize(void* data_ptr, int nx, int ny, int nz, const c
 
     try {
         auto* internal_data = static_cast<cece::CeceInternalData*>(data_ptr);
-
-        if (!g_standalone_writer) {
-            auto output_config = internal_data->config.output_config;
-            if (output_config.amio_worker_threads == -1) {
-                output_config.amio_worker_threads = internal_data->config.driver_config.amio_worker_threads;
-            }
-            MPI_Comm comm = MPI_COMM_SELF;
-            int mpi_initialized = 0;
-            MPI_Initialized(&mpi_initialized);
-            if (mpi_initialized) {
-                MPI_Comm temp_comm = MPI_Comm_f2c(static_cast<MPI_Fint>(mpi_comm_f));
-                if (temp_comm != MPI_COMM_NULL) {
-                    comm = temp_comm;
-                }
-            }
-            g_standalone_writer = std::make_unique<cece::CeceStandaloneWriter>(output_config, comm);
-            std::atexit([]() { g_standalone_writer.reset(); });
-        }
+        EnsureStandaloneWriter(internal_data, mpi_comm_f);
 
         // Convert C string to std::string
         std::string start_time(start_time_iso8601, start_time_len);
