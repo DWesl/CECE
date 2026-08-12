@@ -32,7 +32,7 @@ inline double wrap_longitude(double lon) {
     return lon;
 }
 
-inline double radians_to_degrees(double rad) {
+constexpr inline double radians_to_degrees(double rad) {
     return rad * 180.0 / M_PI;
 }
 
