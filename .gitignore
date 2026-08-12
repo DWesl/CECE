@@ -51,5 +51,11 @@ amio_coord_manifest.yaml
 core.*
 GRA2PESv2.0_config_test1.yaml
 
-# Local-only superpower documentation
+# --- AI Files ---
+specify/
+.specify/
+.gemini/
+.github/agents/
+.github/prompts/
 docs/superpowers/
+specs/
