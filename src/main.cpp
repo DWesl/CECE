@@ -22,7 +22,7 @@
 
 namespace {
 
-inline double wrap_longitude(double lon) {
+constexpr inline double wrap_longitude(double lon) {
     if (lon >= 180.0) {
         return lon - 360.0;
     }
