@@ -458,6 +458,12 @@ target_link_libraries(test_cece_compute PRIVATE cece GTest::gtest_main)
 add_executable(test_standalone_writer_attributes tests/test_standalone_writer_attributes.cpp)
 target_link_libraries(test_standalone_writer_attributes PRIVATE cece GTest::gtest)
 
+# Ensure tests are run under MPI
+set_target_properties(test_standalone_writer_attributes test_cece_utils
+        PROPERTIES
+	TEST_LAUNCHER "${MPIEXEC_EXECUTABLE};${MPIEXEC_NUMPROC_FLAG};1;${MPIEXEC_PREFLAGS}"
+	PROCESSORS 1)
+
 add_executable(test_physics tests/test_physics.cpp)
 target_link_libraries(test_physics PRIVATE cece GTest::gtest_main)
 
@@ -573,6 +579,12 @@ target_link_libraries(
   PRIVATE cece HELM::DAGR HELM::HALO HELM::TICK HELM::SPAN GTest::gtest
 )
 target_compile_definitions(test_helm_cpp PRIVATE CECE_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
+
+# Ensure tests run under MPI
+set_target_properties(test_helm_cpp
+        PROPERTIES
+	TEST_LAUNCHER "${MPIEXEC_EXECUTABLE};${MPIEXEC_NUMPROC_FLAG};1;${MPIEXEC_PREFLAGS}"
+	PROCESSORS 1)
 
 # Parity Regression Tests
 add_executable(test_regression_parity tests/test_regression_parity.cpp)
@@ -735,6 +747,7 @@ if(Python3_Interpreter_FOUND)
   endif()
 endif()
 
+# Kokkos::OpenMP::initialize recommends OMP_PROC_BIND=false for unit tests
 include(GoogleTest)
 gtest_discover_tests(test_driver_configuration)
 gtest_discover_tests(test_driver_clock_management)
@@ -744,25 +757,25 @@ gtest_discover_tests(test_stacking_engine)
 gtest_discover_tests(test_vertical_distribution_single)
 gtest_discover_tests(test_cece_utils)
 gtest_discover_tests(test_cece_compute)
-gtest_discover_tests(test_standalone_writer_attributes)
+gtest_discover_tests(test_standalone_writer_attributes PROPERTIES ENVIRONMENT "OMP_PROC_BIND=false")
 gtest_discover_tests(test_physics)
 gtest_discover_tests(test_cece_ingestor)
 gtest_discover_tests(test_hemco_mimic)
 gtest_discover_tests(test_field_resolution_priority)
 gtest_discover_tests(test_hemco_parity)
-gtest_discover_tests(test_kokkos_configuration)
-gtest_discover_tests(test_properties)
+gtest_discover_tests(test_kokkos_configuration PROPERTIES ENVIRONMENT "OMP_PROC_BIND=false")
+gtest_discover_tests(test_properties PROPERTIES ENVIRONMENT "OMP_PROC_BIND=false")
 gtest_discover_tests(test_suite_idempotence)
 gtest_discover_tests(test_repro_failure)
 gtest_discover_tests(test_ccpp_readiness)
 gtest_discover_tests(test_fengsha_properties)
 gtest_discover_tests(test_ginoux_properties)
 gtest_discover_tests(test_k14_properties)
-gtest_discover_tests(test_speciation)
-gtest_discover_tests(test_megan3)
+gtest_discover_tests(test_speciation PROPERTIES ENVIRONMENT "OMP_PROC_BIND=false")
+gtest_discover_tests(test_megan3 PROPERTIES ENVIRONMENT "OMP_PROC_BIND=false")
 gtest_discover_tests(test_cece_clock_properties)
 gtest_discover_tests(test_cece_clock_run_loop)
-gtest_discover_tests(test_bdsnp)
+gtest_discover_tests(test_bdsnp PROPERTIES ENVIRONMENT "OMP_PROC_BIND=false")
 gtest_discover_tests(test_helm_cpp PROPERTIES ENVIRONMENT "FI_PROVIDER=tcp;I_MPI_FABRICS=shm")
 gtest_discover_tests(test_regression_parity)
 
