@@ -460,9 +460,10 @@ target_link_libraries(test_standalone_writer_attributes PRIVATE cece GTest::gtes
 
 # Ensure tests are run under MPI
 set_target_properties(test_standalone_writer_attributes test_cece_utils
-        PROPERTIES
-	TEST_LAUNCHER "${MPIEXEC_EXECUTABLE};${MPIEXEC_NUMPROC_FLAG};1;${MPIEXEC_PREFLAGS}"
-	PROCESSORS 1)
+  PROPERTIES
+    TEST_LAUNCHER "${MPIEXEC_EXECUTABLE};${MPIEXEC_NUMPROC_FLAG};1;${MPIEXEC_PREFLAGS}"
+    PROCESSORS 1
+)
 
 add_executable(test_physics tests/test_physics.cpp)
 target_link_libraries(test_physics PRIVATE cece GTest::gtest_main)
@@ -582,9 +583,10 @@ target_compile_definitions(test_helm_cpp PRIVATE CECE_SOURCE_DIR="${CMAKE_CURREN
 
 # Ensure tests run under MPI
 set_target_properties(test_helm_cpp
-        PROPERTIES
-	TEST_LAUNCHER "${MPIEXEC_EXECUTABLE};${MPIEXEC_NUMPROC_FLAG};1;${MPIEXEC_PREFLAGS}"
-	PROCESSORS 1)
+  PROPERTIES
+    TEST_LAUNCHER "${MPIEXEC_EXECUTABLE};${MPIEXEC_NUMPROC_FLAG};1;${MPIEXEC_PREFLAGS}"
+    PROCESSORS 1
+)
 
 # Parity Regression Tests
 add_executable(test_regression_parity tests/test_regression_parity.cpp)
