@@ -114,7 +114,7 @@ inline void PrintKokkosConfiguration() {
 
 #ifdef KOKKOS_ENABLE_OPENMP
     std::cout << "OpenMP Configuration:" << std::endl;
-    std::cout << "  - Threads: " << Kokkos::OpenMP::concurrency() << std::endl;
+    std::cout << "  - Threads: " << Kokkos::OpenMP().concurrency() << std::endl;
 #endif
 
 #ifdef KOKKOS_ENABLE_CUDA
@@ -175,7 +175,7 @@ inline int GetOpenMPThreadCount() {
             return threads;
         }
     }
-    return Kokkos::OpenMP::concurrency();
+    return Kokkos::OpenMP().concurrency();
 #else
     return 1;
 #endif

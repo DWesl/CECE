@@ -116,15 +116,22 @@ if(NOT ESMF_FOUND)
         get_filename_component(lib_dir "${lib_path}" DIRECTORY)
       endif()
 
+      # Skip relative paths (e.g. "./") that resolve incorrectly
+      if(lib_dir AND NOT IS_ABSOLUTE "${lib_dir}")
+        continue()
+      endif()
+
       if(IS_DIRECTORY "${lib_dir}")
         list(APPEND ESMF_INCLUDE_DIRS "${lib_dir}")
         # Also check for 'mod' and 'include' directories at the same level or
         # one level up
-        if(IS_DIRECTORY "${lib_dir}/../mod")
-          list(APPEND ESMF_INCLUDE_DIRS "${lib_dir}/../mod")
+        get_filename_component(_parent_mod "${lib_dir}/../mod" ABSOLUTE)
+        get_filename_component(_parent_inc "${lib_dir}/../include" ABSOLUTE)
+        if(IS_DIRECTORY "${_parent_mod}")
+          list(APPEND ESMF_INCLUDE_DIRS "${_parent_mod}")
         endif()
-        if(IS_DIRECTORY "${lib_dir}/../include")
-          list(APPEND ESMF_INCLUDE_DIRS "${lib_dir}/../include")
+        if(IS_DIRECTORY "${_parent_inc}")
+          list(APPEND ESMF_INCLUDE_DIRS "${_parent_inc}")
         endif()
       endif()
     endforeach()

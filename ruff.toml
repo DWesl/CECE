@@ -1,0 +1,2 @@
+[lint.per-file-ignores]
+"spack/**" = ["F403", "F405"]

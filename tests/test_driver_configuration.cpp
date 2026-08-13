@@ -112,7 +112,10 @@ TEST_F(ISO8601ParsingTest, InvalidISO8601Format) {
 class DriverConfigurationTest : public ::testing::Test {
    protected:
     void SetUp() override {
-        test_config_file = "test_driver_config.yaml";
+        // Use a unique filename per test to avoid race conditions when
+        // ctest runs multiple test binaries in parallel (-j).
+        const auto* info = ::testing::UnitTest::GetInstance()->current_test_info();
+        test_config_file = std::string("test_driver_config_") + info->test_suite_name() + "_" + info->name() + ".yaml";
     }
 
     void TearDown() override {
@@ -255,6 +258,418 @@ species:
     EXPECT_EQ(config.driver_config.grid.nz, 72);
 }
 
+TEST_F(DriverConfigurationTest, ParseAmioWorkerThreads) {
+    // 1. Verify custom positive values are successfully parsed
+    WriteConfigFile(test_config_file, R"(
+driver:
+  start_time: "2010-01-01T00:00:00"
+  end_time: "2010-01-01T23:00:00"
+  timestep_seconds: 3600
+  amio_worker_threads: 4
+
+species:
+  CO:
+    - operation: add
+      field: CO_anthro
+      hierarchy: 0
+      scale: 1.0
+
+physics_schemes:
+  - name: NativeExample
+    language: cpp
+)");
+    CeceConfig config = ParseConfig(test_config_file);
+    EXPECT_EQ(config.driver_config.amio_worker_threads, 4);
+
+    // 2. Verify invalid (0 or negative) values are clamped to 1
+    WriteConfigFile(test_config_file, R"(
+driver:
+  start_time: "2010-01-01T00:00:00"
+  end_time: "2010-01-01T23:00:00"
+  timestep_seconds: 3600
+  amio_worker_threads: -3
+
+species:
+  CO:
+    - operation: add
+      field: CO_anthro
+      hierarchy: 0
+      scale: 1.0
+
+physics_schemes:
+  - name: NativeExample
+    language: cpp
+)");
+    config = ParseConfig(test_config_file);
+    EXPECT_EQ(config.driver_config.amio_worker_threads, 1);
+
+    // 3. Verify omitted values default to 1
+    WriteConfigFile(test_config_file, R"(
+driver:
+  start_time: "2010-01-01T00:00:00"
+  end_time: "2010-01-01T23:00:00"
+  timestep_seconds: 3600
+
+species:
+  CO:
+    - operation: add
+      field: CO_anthro
+      hierarchy: 0
+      scale: 1.0
+
+physics_schemes:
+  - name: NativeExample
+    language: cpp
+)");
+    config = ParseConfig(test_config_file);
+    EXPECT_EQ(config.driver_config.amio_worker_threads, 1);
+}
+
+TEST_F(DriverConfigurationTest, ParseAmioWorkerThreadsOutput) {
+    // 1. Verify custom positive values parse correctly in output block
+    WriteConfigFile(test_config_file, R"(
+output:
+  enabled: true
+  directory: ./cece_output
+  filename_pattern: "cece_ex1_{YYYY}{MM}{DD}_{HH}{mm}{ss}.nc"
+  frequency_steps: 1
+  fields: [CO]
+  amio_worker_threads: 3
+
+species:
+  CO:
+    - operation: add
+      field: CO_anthro
+      hierarchy: 0
+      scale: 1.0
+
+physics_schemes:
+  - name: NativeExample
+    language: cpp
+)");
+    CeceConfig config = ParseConfig(test_config_file);
+    EXPECT_EQ(config.output_config.amio_worker_threads, 3);
+
+    // 2. Verify invalid output values are clamped to 1
+    WriteConfigFile(test_config_file, R"(
+output:
+  enabled: true
+  directory: ./cece_output
+  filename_pattern: "cece_ex1_{YYYY}{MM}{DD}_{HH}{mm}{ss}.nc"
+  frequency_steps: 1
+  fields: [CO]
+  amio_worker_threads: 0
+
+species:
+  CO:
+    - operation: add
+      field: CO_anthro
+      hierarchy: 0
+      scale: 1.0
+
+physics_schemes:
+  - name: NativeExample
+    language: cpp
+)");
+    config = ParseConfig(test_config_file);
+    EXPECT_EQ(config.output_config.amio_worker_threads, 1);
+
+    // 3. Verify omitted output values default to -1 (representing fallback unset)
+    WriteConfigFile(test_config_file, R"(
+output:
+  enabled: true
+  directory: ./cece_output
+  filename_pattern: "cece_ex1_{YYYY}{MM}{DD}_{HH}{mm}{ss}.nc"
+  frequency_steps: 1
+  fields: [CO]
+
+species:
+  CO:
+    - operation: add
+      field: CO_anthro
+      hierarchy: 0
+      scale: 1.0
+
+physics_schemes:
+  - name: NativeExample
+    language: cpp
+)");
+    config = ParseConfig(test_config_file);
+    EXPECT_EQ(config.output_config.amio_worker_threads, -1);
+}
+
+TEST_F(DriverConfigurationTest, ParseOutputFieldsWithInlineAttributes) {
+    // output.fields entries may be maps carrying per-field NetCDF attributes;
+    // scalar entries remain valid shorthand for a field with no attributes.
+    WriteConfigFile(test_config_file, R"(
+output:
+  enabled: true
+  directory: ./cece_output
+  fields:
+    - name: co
+      attributes:
+        units: "kg m-2 s-1"
+        long_name: "carbon_monoxide_emission_flux"
+    - name: nox
+    - name: isoprene
+      attributes:
+        units: "kg m-2 s-1"
+    - sea_salt_total
+
+species:
+  CO:
+    - operation: add
+      field: CO_anthro
+      hierarchy: 0
+      scale: 1.0
+
+physics_schemes:
+  - name: NativeExample
+    language: cpp
+)");
+    CeceConfig config = ParseConfig(test_config_file);
+
+    const auto data_fields = config.output_config.fields.GetDataFields();
+    ASSERT_EQ(data_fields.size(), 4u);
+    EXPECT_EQ(data_fields[0].get().name, "co");
+    EXPECT_EQ(data_fields[1].get().name, "nox");
+    EXPECT_EQ(data_fields[2].get().name, "isoprene");
+    EXPECT_EQ(data_fields[3].get().name, "sea_salt_total");
+
+    ASSERT_EQ(data_fields[0].get().attributes.size(), 2u);
+    EXPECT_EQ(data_fields[0].get().attributes.at("units"), "kg m-2 s-1");
+    EXPECT_EQ(data_fields[0].get().attributes.at("long_name"), "carbon_monoxide_emission_flux");
+
+    ASSERT_EQ(data_fields[2].get().attributes.size(), 1u);
+    EXPECT_EQ(data_fields[2].get().attributes.at("units"), "kg m-2 s-1");
+
+    // Fields without configured attributes carry an empty map.
+    EXPECT_TRUE(data_fields[1].get().attributes.empty());
+    EXPECT_TRUE(data_fields[3].get().attributes.empty());
+
+    // The seeded coordinate variables tag along in every collection.
+    EXPECT_EQ(config.output_config.fields.GetCoordinateFields().size(), 4u);
+}
+
+TEST_F(DriverConfigurationTest, ParseOutputFieldsScalarShorthandStillWorks) {
+    WriteConfigFile(test_config_file, R"(
+output:
+  enabled: true
+  fields: [CO]
+
+species:
+  CO:
+    - operation: add
+      field: CO_anthro
+      hierarchy: 0
+      scale: 1.0
+
+physics_schemes:
+  - name: NativeExample
+    language: cpp
+)");
+    CeceConfig config = ParseConfig(test_config_file);
+
+    const auto data_fields = config.output_config.fields.GetDataFields();
+    ASSERT_EQ(data_fields.size(), 1u);
+    EXPECT_EQ(data_fields[0].get().name, "CO");
+    EXPECT_TRUE(data_fields[0].get().attributes.empty());
+}
+
+TEST_F(DriverConfigurationTest, OutputFieldCreateIOManifest) {
+    // Configured attributes verbatim, coordinates override honored and
+    // emitted last.
+    const CeceOutputField configured{"co", {{"units", "kg m-2 s-1"}, {"coordinates", "lon lat time"}}};
+    EXPECT_EQ(configured.CreateIOManifest(),
+              "  co:\n"
+              "    attributes:\n"
+              "      units: \"kg m-2 s-1\"\n"
+              "      coordinates: \"lon lat time\"\n");
+
+    // No configured attributes: only the structural coordinates default.
+    const CeceOutputField bare{"nox", {}};
+    EXPECT_EQ(bare.CreateIOManifest(),
+              "  nox:\n"
+              "    attributes:\n"
+              "      coordinates: \"time lev lat lon\"\n");
+
+    // Coordinate variables carry their configured attributes but never a
+    // coordinates attribute of their own (attributes emit in map order).
+    const CeceOutputField coordinate{"lon", {{"units", "degrees_east"}, {"long_name", "longitude"}}};
+    EXPECT_EQ(coordinate.CreateIOManifest(),
+              "  lon:\n"
+              "    attributes:\n"
+              "      long_name: \"longitude\"\n"
+              "      units: \"degrees_east\"\n");
+}
+
+TEST_F(DriverConfigurationTest, OutputFieldCollectionPartitionLookupAndManifest) {
+    // Every collection is seeded with the coordinate variables; configured
+    // entries join as data fields (coordinate-named entries are rejected —
+    // see CollectionRejectsDuplicateFieldNames).
+    CeceOutputFieldCollection collection{
+        {"co", {{"units", "kg m-2 s-1"}}},
+        {"nox", {}},
+    };
+
+    const auto coordinate_fields = collection.GetCoordinateFields();
+    ASSERT_EQ(coordinate_fields.size(), 4u);
+    EXPECT_EQ(coordinate_fields[0].get().name, "lon");
+    EXPECT_EQ(coordinate_fields[0].get().attributes.at("units"), "degrees_east");
+    EXPECT_EQ(coordinate_fields[3].get().name, "time");
+
+    const auto data_fields = collection.GetDataFields();
+    ASSERT_EQ(data_fields.size(), 2u);
+    EXPECT_EQ(data_fields[0].get().name, "co");
+    EXPECT_EQ(data_fields[1].get().name, "nox");
+
+    EXPECT_TRUE(collection.Contains("co"));
+    EXPECT_TRUE(collection.Contains("lat"));
+    EXPECT_FALSE(collection.Contains("absent"));
+    EXPECT_EQ(collection.Find("absent"), nullptr);
+
+    // Time's units are set at initialization (SetTimeUnits turns the
+    // ISO-8601 T into a space); rendering is const and returns the
+    // variable_names list plus every field's block in declaration order
+    // (seeded coordinate variables without a coordinates attribute first,
+    // then data fields with override-or-default coordinates last).
+    collection.SetTimeUnits("2001-06-01T00:00:00");
+    const std::string expected_blocks =
+        "  lon:\n"
+        "    attributes:\n"
+        "      long_name: \"longitude\"\n"
+        "      units: \"degrees_east\"\n"
+        "  lat:\n"
+        "    attributes:\n"
+        "      long_name: \"latitude\"\n"
+        "      units: \"degrees_north\"\n"
+        "  lev:\n"
+        "    attributes:\n"
+        "      long_name: \"vertical level\"\n"
+        "      units: \"level\"\n"
+        "  time:\n"
+        "    attributes:\n"
+        "      long_name: \"time\"\n"
+        "      units: \"seconds since 2001-06-01 00:00:00\"\n"
+        "  co:\n"
+        "    attributes:\n"
+        "      units: \"kg m-2 s-1\"\n"
+        "      coordinates: \"time lev lat lon\"\n"
+        "  nox:\n"
+        "    attributes:\n"
+        "      coordinates: \"time lev lat lon\"\n";
+    EXPECT_EQ(collection.CreateIOManifest(),
+              "variable_names: [\"lon\", \"lat\", \"lev\", \"time\", \"co\", \"nox\"]\n"
+              "variables:\n" +
+                  expected_blocks);
+}
+
+TEST_F(DriverConfigurationTest, CollectionRejectsDuplicateFieldNames) {
+    // Duplicate data field name.
+    CeceOutputFieldCollection collection{{"co", {}}};
+    EXPECT_THROW(collection.push_back({"co", {}}), std::runtime_error);
+
+    // Coordinate names collide with the seeded coordinate variables.
+    EXPECT_THROW((CeceOutputFieldCollection{{"lon", {}}}), std::runtime_error);
+
+    // Duplicates inside a single initializer list are caught too — the
+    // list constructor routes every entry through push_back.
+    EXPECT_THROW((CeceOutputFieldCollection{{"co", {}}, {"co", {}}}), std::runtime_error);
+}
+
+TEST_F(DriverConfigurationTest, ParseOutputFieldsDuplicateRejected) {
+    WriteConfigFile(test_config_file, R"(
+output:
+  enabled: true
+  fields:
+    - co
+    - name: co
+      attributes:
+        units: "kg m-2 s-1"
+
+species:
+  CO:
+    - operation: add
+      field: CO_anthro
+      hierarchy: 0
+      scale: 1.0
+
+physics_schemes:
+  - name: NativeExample
+    language: cpp
+)");
+    EXPECT_THROW(ParseConfig(test_config_file), std::runtime_error);
+}
+
+TEST_F(DriverConfigurationTest, CreateIOManifestRequiresTimeUnits) {
+    // Rendering without SetTimeUnits would silently emit a time block with
+    // no units; the collection refuses instead. Presence is checked, not
+    // content.
+    const CeceOutputFieldCollection unset{{"co", {}}};
+    EXPECT_THROW(unset.CreateIOManifest(), std::runtime_error);
+
+    CeceOutputFieldCollection set{{"co", {}}};
+    set.SetTimeUnits("2001-06-01T00:00:00");
+    EXPECT_NO_THROW(set.CreateIOManifest());
+}
+
+TEST_F(DriverConfigurationTest, ParseOutputEnabledFalse) {
+    // enabled: false keeps the block as dormant configuration but disables
+    // output; an omitted or true enabled key keeps output on.
+    const std::string config_tail = R"(
+  directory: ./cece_output
+  fields: [CO]
+
+species:
+  CO:
+    - operation: add
+      field: CO_anthro
+      hierarchy: 0
+      scale: 1.0
+
+physics_schemes:
+  - name: NativeExample
+    language: cpp
+)";
+    WriteConfigFile(test_config_file, "output:\n  enabled: false" + config_tail);
+    CeceConfig config = ParseConfig(test_config_file);
+    EXPECT_FALSE(config.output_config.enabled);
+    // The rest of the block still parses (dormant, not discarded).
+    EXPECT_EQ(config.output_config.directory, "./cece_output");
+    EXPECT_EQ(config.output_config.fields.GetDataFields().size(), 1u);
+
+    WriteConfigFile(test_config_file, "output:\n  enabled: true" + config_tail);
+    config = ParseConfig(test_config_file);
+    EXPECT_TRUE(config.output_config.enabled);
+
+    // Presence of the block enables output when the key is omitted.
+    WriteConfigFile(test_config_file, "output:" + config_tail);
+    config = ParseConfig(test_config_file);
+    EXPECT_TRUE(config.output_config.enabled);
+}
+
+TEST_F(DriverConfigurationTest, OutputFieldEntryWithoutNameIsRejected) {
+    WriteConfigFile(test_config_file, R"(
+output:
+  enabled: true
+  fields:
+    - attributes:
+        units: "kg m-2 s-1"
+
+species:
+  CO:
+    - operation: add
+      field: CO_anthro
+      hierarchy: 0
+      scale: 1.0
+
+physics_schemes:
+  - name: NativeExample
+    language: cpp
+)");
+    EXPECT_THROW(ParseConfig(test_config_file), std::runtime_error);
+}
+
 // ---------------------------------------------------------------------------
 // Tests for Configuration Validation (Task 1.5)
 // ---------------------------------------------------------------------------
@@ -326,7 +741,10 @@ void cece_core_get_driver_config(const char* config_file, int config_file_len, c
 class DriverConfigCInterfaceTest : public ::testing::Test {
    protected:
     void SetUp() override {
-        test_config_file = "test_driver_config_c.yaml";
+        // Use a unique filename per test to avoid race conditions when
+        // ctest runs multiple test binaries in parallel (-j).
+        const auto* info = ::testing::UnitTest::GetInstance()->current_test_info();
+        test_config_file = std::string("test_driver_config_c_") + info->name() + ".yaml";
     }
 
     void TearDown() override {

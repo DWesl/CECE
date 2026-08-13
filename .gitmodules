@@ -1,0 +1,3 @@
+[submodule "extern/helm"]
+	path = extern/helm
+	url = https://github.com/bbakernoaa/HELM-Project.git

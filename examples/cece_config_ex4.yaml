@@ -1,4 +1,14 @@
-# Physics schemes demonstration example
+# =====================================================================
+# CECE Example 4: CCPP Physics Schemes processing
+# =====================================================================
+# This example tests CCPP physical scheme integrations, running diurnal
+# and seasonal scaling variation calculations.
+#
+# Key Features Tested:
+#   - Dynamic diurnal/seasonal variation scaling factors.
+#   - Physics scheme parameter ingestion and runtime scheduling.
+#   - 24-hour simulation cycle for full day-night profiling.
+# =====================================================================
 driver:
   start_time: "2020-01-01T00:00:00"
   end_time: "2020-01-02T00:00:00"
@@ -35,6 +45,9 @@ cece_data:
       yearFirst: 2018
       yearLast: 2018
       yearAlign: 2020
+      taxmode: "cycle"
+      tintalgo: "linear"
+      mapalgo: "consd"
       variables:
         - file: "NO_SHP"
           model: "HTAP_NO"
@@ -42,3 +55,14 @@ cece_data:
 diagnostics:
   output_interval_seconds: 3600
   variables: ["no"]
+
+output:
+  enabled: true
+  directory: ./cece_output
+  filename_pattern: "cece_ex4_{YYYY}{MM}{DD}_{HH}{mm}{ss}.nc"
+  frequency_steps: 1
+  fields:
+    - name: "no"
+      attributes:
+        units: "kg m-2 s-1"
+        long_name: "nitrogen_monoxide_emission_flux"

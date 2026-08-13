@@ -129,7 +129,7 @@ class StackingEngine {
         /// Device-side storage for layer handles.
         Kokkos::View<DeviceLayer*, Kokkos::DefaultExecutionSpace> device_layers;
         /// Persistent host-side mirror to avoid redundant allocations.
-        typename Kokkos::View<DeviceLayer*, Kokkos::DefaultExecutionSpace>::HostMirror host_layers;
+        typename Kokkos::View<DeviceLayer*, Kokkos::DefaultExecutionSpace>::host_mirror_type host_layers;
         /// Cached handle to the export View.
         MutableUnmanagedDeviceView3D export_field;
 

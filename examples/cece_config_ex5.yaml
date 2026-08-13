@@ -1,11 +1,21 @@
-# Driver configuration for multi-timestep execution
+# =====================================================================
+# CECE Example 5: Production Multi-Timestep Ingestion
+# =====================================================================
+# This example tests multi-timestep emissions processing for multiple
+# species (CO + NO) with diverse data source configurations.
+#
+# Key Features Tested:
+#   - Dynamic multi-stream remapping and temporal alignment.
+#   - Medium-resolution global-scale rectilinear grid (270x135).
+#   - High-throughput parallel NetCDF output file generation.
+# =====================================================================
 driver:
   start_time: "2020-01-01T00:00:00"
   end_time: "2020-01-01T06:00:00"
   timestep_seconds: 3600
   grid:
-    nx: 4
-    ny: 4
+    nx: 270
+    ny: 135
     lon_min: -135.0
     lon_max: 135.0
     lat_min: -67.5
@@ -16,7 +26,7 @@ species:
     - field: "MACCITY_CO"
       operation: "add"
   no:
-    - field: "HTAP_NO"
+    - field: "MACCITY_NO"
       operation: "add"
 
 cece_data:
@@ -32,17 +42,17 @@ cece_data:
       variables:
         - file: "MACCity"
           model: "MACCITY_CO"
-    - name: "HTAP_NO"
-      file: "/work/data/HTAPv3_NO_0.1x0.1_2018.nc"
-      yearFirst: 2018
-      yearLast: 2018
+    - name: "MACCITY_NO"
+      file: "/work/data/MACCity_anthro_NOx_2000-2010_16080.nc"
+      yearFirst: 2000
+      yearLast: 2010
       yearAlign: 2020
-      taxmode: "extend"
+      taxmode: "cycle"
       tintalgo: "linear"
       mapalgo: "consd"
       variables:
-        - file: "NO_SHP"
-          model: "HTAP_NO"
+        - file: "MACCity"
+          model: "MACCITY_NO"
 
 diagnostics:
   output_interval_seconds: 2592000
@@ -54,5 +64,8 @@ output:
   filename_pattern: "cece_{YYYY}{MM}{DD}_{HH}{mm}{ss}.nc"
   frequency_steps: 1
   fields:
-    - co
-    - "no"
+    - name: co
+      attributes:
+        units: "kg m-2 s-1"
+        long_name: "carbon_monoxide_emission_flux"
+    - "no" # scalar shorthand: written with no configured attributes

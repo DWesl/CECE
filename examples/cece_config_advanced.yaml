@@ -1,4 +1,15 @@
-# Advanced multi-species configuration demonstrating stacking engine features
+# =====================================================================
+# CECE Example: Advanced Multi-Species and Stacking Engine Demo
+# =====================================================================
+# This advanced example demonstrates the full capabilities of the CECE
+# StackingEngine executing multiple dependent speciation and emissions
+# physics schemes.
+#
+# Key Features Tested:
+#   - Multi-species (CO + NO + VOCs) speciation and emissionActivity calculations.
+#   - Stacking engine scheduler executing dependent physics schemes sequentially.
+#   - Medium-resolution global-scale rectilinear grid remapping.
+# =====================================================================
 driver:
   start_time: "2020-07-15T00:00:00"
   end_time: "2020-07-15T12:00:00"
@@ -183,6 +194,7 @@ species:
 physics_schemes:
   - name: "megan"
     language: "cpp"
+    refresh_interval_seconds: 300 # Biogenics need high-frequency updates (every 5 min)
     options:
       temperature_standard: 303.15
       par_conversion_factor: 4.6
@@ -191,6 +203,7 @@ physics_schemes:
 
   - name: "sea_salt"
     language: "cpp"
+    refresh_interval_seconds: 1800 # Sea salt updates every 30 min
     options:
       r_sala_min: 0.01
       r_sala_max: 0.5
@@ -200,6 +213,7 @@ physics_schemes:
 
   - name: "dust"
     language: "cpp"
+    refresh_interval_seconds: 1800 # Dust updates every 30 min
     options:
       particle_density: 2.5
       tuning_factor: 1.0e-9
@@ -210,6 +224,7 @@ cece_data:
   streams:
     - name: "GLOBAL_ANTHROPOGENIC"
       file: "/data/inventories/CEDS_global_2020.nc"
+      refresh_interval_seconds: 3600 # Anthropogenic data changes slowly — ingest hourly
       yearFirst: 2020
       yearLast: 2020
       yearAlign: 2020
@@ -277,8 +292,17 @@ output:
   filename_pattern: "cece_advanced_{YYYY}{MM}{DD}_{HH}{mm}{ss}.nc"
   frequency_steps: 1
   fields:
-    - "co"
-    - "nox"
-    - "isoprene"
-    - "sea_salt_total"
+    - name: "co"
+      attributes:
+        units: "kg m-2 s-1"
+        long_name: "carbon_monoxide_emission_flux"
+    - name: "nox"
+      attributes:
+        units: "kg m-2 s-1"
+        long_name: "nitrogen_oxides_emission_flux"
+    - name: "isoprene"
+      attributes:
+        units: "kg m-2 s-1"
+        long_name: "isoprene_emission_flux"
+    - "sea_salt_total" # scalar shorthand: written with no configured attributes
     - "dust_total"
