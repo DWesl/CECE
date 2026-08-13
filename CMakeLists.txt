@@ -459,7 +459,9 @@ add_executable(test_standalone_writer_attributes tests/test_standalone_writer_at
 target_link_libraries(test_standalone_writer_attributes PRIVATE cece GTest::gtest)
 
 # Ensure tests are run under MPI
-set_target_properties(test_standalone_writer_attributes test_cece_utils
+set_target_properties(
+  test_standalone_writer_attributes
+  test_cece_utils
   PROPERTIES
     TEST_LAUNCHER "${MPIEXEC_EXECUTABLE};${MPIEXEC_NUMPROC_FLAG};1;${MPIEXEC_PREFLAGS}"
     PROCESSORS 1
@@ -582,7 +584,8 @@ target_link_libraries(
 target_compile_definitions(test_helm_cpp PRIVATE CECE_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
 
 # Ensure tests run under MPI
-set_target_properties(test_helm_cpp
+set_target_properties(
+  test_helm_cpp
   PROPERTIES
     TEST_LAUNCHER "${MPIEXEC_EXECUTABLE};${MPIEXEC_NUMPROC_FLAG};1;${MPIEXEC_PREFLAGS}"
     PROCESSORS 1
