@@ -427,6 +427,12 @@ target_link_libraries(test_driver_configuration PRIVATE cece GTest::gtest_main)
 if(ESMF_FOUND)
   add_executable(test_driver_config_validation tests/test_driver_config_validation.cpp)
   target_link_libraries(test_driver_config_validation PRIVATE cece iso8601_utils GTest::gtest_main)
+  set_target_properties(
+    test_driver_config_validation
+    PROPERTIES
+      TEST_LAUNCHER "${MPIEXEC_EXECUTABLE};${MPIEXEC_NUMPROC_FLAG};1;${MPIEXEC_PREFLAGS}"
+      PROCESSORS 1
+  )
 endif()
 
 add_executable(test_driver_clock_management tests/test_driver_clock_management.cpp)
@@ -573,6 +579,13 @@ if(ESMF_FOUND)
   else()
     target_link_libraries(test_field_pointer_passing PRIVATE cece GTest::gtest_main)
   endif()
+
+  set_target_properties(
+    test_field_creation
+    PROPERTIES
+      TEST_LAUNCHER "${MPIEXEC_EXECUTABLE};${MPIEXEC_NUMPROC_FLAG};1;${MPIEXEC_PREFLAGS}"
+      PROCESSORS 1
+  )
 endif()
 
 # C++ HELM Unit Tests
