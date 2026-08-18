@@ -581,7 +581,7 @@ if(ESMF_FOUND)
   endif()
 
   set_target_properties(
-    test_field_creation
+    test_field_creation test_field_pointer_passing
     PROPERTIES
       TEST_LAUNCHER "${MPIEXEC_EXECUTABLE};${MPIEXEC_NUMPROC_FLAG};1;${MPIEXEC_PREFLAGS}"
       PROCESSORS 1
@@ -810,7 +810,7 @@ if(ESMF_FOUND)
   )
   gtest_discover_tests(
     test_field_pointer_passing
-    PROPERTIES ENVIRONMENT "FI_PROVIDER=tcp;I_MPI_FABRICS=shm"
+    PROPERTIES ENVIRONMENT "FI_PROVIDER=tcp;I_MPI_FABRICS=shm;OMP_PROC_BIND=false"
   )
 endif()
 
