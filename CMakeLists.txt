@@ -581,7 +581,8 @@ if(ESMF_FOUND)
   endif()
 
   set_target_properties(
-    test_field_creation test_field_pointer_passing
+    test_field_creation
+    test_field_pointer_passing
     PROPERTIES
       TEST_LAUNCHER "${MPIEXEC_EXECUTABLE};${MPIEXEC_NUMPROC_FLAG};1;${MPIEXEC_PREFLAGS}"
       PROCESSORS 1
