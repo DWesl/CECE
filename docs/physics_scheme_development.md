@@ -348,7 +348,7 @@ Kokkos::parallel_for(
 Use Horner's method for polynomial evaluation:
 
 ```cpp
-// Bad: 4 multiplications
+// Bad: 5 multiplications
 double result = a*x*x*x + b*x*x + c*x + d;
 
 // Good: 3 multiplications (Horner's method)
