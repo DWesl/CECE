@@ -421,6 +421,12 @@ install(DIRECTORY include/cece DESTINATION include)
 
 enable_testing()
 
+if(POLICY CMP0178)
+  # New behavior ignores TEST_LAUNCHER documentation about
+  # semicolon-separated lists
+  cmake_policy(SET CMP0178 OLD)
+endif()
+
 add_executable(test_driver_configuration tests/test_driver_configuration.cpp)
 target_link_libraries(test_driver_configuration PRIVATE cece GTest::gtest_main)
 
