@@ -495,6 +495,7 @@ int main(int argc, char* argv[]) {
             int hour = current_dt.hour;
             int day_of_week = 1;  // Default Monday/Tuesday
             cece_core_run(cece_data_ptr, hour, day_of_week, &rc);
+            const bool simulation_complete = (rc == 1);
             if (rc < 0) {
                 cece::LogFatal("[DRIVER FATAL] (rank " + std::to_string(my_rank) + ") cece_core_run failed with rc=" + std::to_string(rc));
                 throw std::runtime_error("cece_core_run failed");
@@ -511,6 +512,10 @@ int main(int argc, char* argv[]) {
             if (rc < 0) {
                 cece::LogFatal("[DRIVER FATAL] (rank " + std::to_string(my_rank) + ") cece_core_write_step failed with rc=" + std::to_string(rc));
                 throw std::runtime_error("cece_core_write_step failed");
+            }
+
+            if (simulation_complete) {
+                break;
             }
         }
 
