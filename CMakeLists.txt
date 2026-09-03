@@ -579,10 +579,16 @@ target_link_libraries(test_bdsnp PRIVATE cece GTest::gtest rapidcheck rapidcheck
 
 if(ESMF_FOUND)
   add_executable(test_field_creation tests/test_field_creation.cpp)
+  add_executable(test_field_creation_error_handling tests/test_field_creation_error_handling.cpp)
   if(CECE_HAS_FORTRAN AND TARGET test_helpers)
     target_link_libraries(test_field_creation PRIVATE cece test_helpers GTest::gtest_main)
+    target_link_libraries(
+      test_field_creation_error_handling
+      PRIVATE cece test_helpers GTest::gtest_main
+    )
   else()
     target_link_libraries(test_field_creation PRIVATE cece GTest::gtest_main)
+    target_link_libraries(test_field_creation_error_handling PRIVATE cece GTest::gtest_main)
   endif()
 
   # Unit tests for field pointer passing (Requirement R5)
@@ -595,6 +601,7 @@ if(ESMF_FOUND)
 
   set_target_properties(
     test_field_creation
+    test_field_creation_error_handling
     test_field_pointer_passing
     PROPERTIES TEST_LAUNCHER "${MPIEXEC_EXECUTABLE};${MPIEXEC_NUMPROC_FLAG};1;${MPIEXEC_PREFLAGS}"
   )
@@ -826,6 +833,10 @@ if(ESMF_FOUND)
   gtest_discover_tests(
     test_field_creation
     PROPERTIES ENVIRONMENT "FI_PROVIDER=tcp;I_MPI_FABRICS=shm;OMP_PROC_BIND=false" PROCESSORS 1
+  )
+  gtest_discover_tests(
+    test_field_creation_error_handling
+    PROPERTIES ENVIRONMENT "OMP_PROC_BIND=false" PROCESSORS 1
   )
   gtest_discover_tests(
     test_field_pointer_passing
