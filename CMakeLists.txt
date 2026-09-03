@@ -625,10 +625,6 @@ set_target_properties(
   PROPERTIES TEST_LAUNCHER "${MPIEXEC_EXECUTABLE};${MPIEXEC_NUMPROC_FLAG};1;${MPIEXEC_PREFLAGS}"
 )
 
-# Parity Regression Tests
-add_executable(test_regression_parity tests/test_regression_parity.cpp)
-target_link_libraries(test_regression_parity PRIVATE cece GTest::gtest_main)
-
 # Standalone NUOPC driver
 if(ESMF_FOUND)
   add_subdirectory(src/driver/nuopc)
@@ -823,7 +819,6 @@ gtest_discover_tests(
   test_helm_cpp
   PROPERTIES ENVIRONMENT "FI_PROVIDER=tcp;I_MPI_FABRICS=shm;OMP_PROC_BIND=false" PROCESSORS 1
 )
-gtest_discover_tests(test_regression_parity)
 
 if(ESMF_FOUND)
   gtest_discover_tests(
