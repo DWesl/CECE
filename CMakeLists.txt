@@ -446,9 +446,7 @@ if(ESMF_FOUND)
   target_link_libraries(test_driver_config_validation PRIVATE cece iso8601_utils GTest::gtest_main)
   set_target_properties(
     test_driver_config_validation
-    PROPERTIES
-      TEST_LAUNCHER "${MPIEXEC_EXECUTABLE};${MPIEXEC_NUMPROC_FLAG};1;${MPIEXEC_PREFLAGS}"
-      PROCESSORS 1
+    PROPERTIES TEST_LAUNCHER "${MPIEXEC_EXECUTABLE};${MPIEXEC_NUMPROC_FLAG};1;${MPIEXEC_PREFLAGS}"
   )
 endif()
 
@@ -485,9 +483,7 @@ target_link_libraries(test_standalone_writer_attributes PRIVATE cece GTest::gtes
 set_target_properties(
   test_standalone_writer_attributes
   test_cece_utils
-  PROPERTIES
-    TEST_LAUNCHER "${MPIEXEC_EXECUTABLE};${MPIEXEC_NUMPROC_FLAG};1;${MPIEXEC_PREFLAGS}"
-    PROCESSORS 1
+  PROPERTIES TEST_LAUNCHER "${MPIEXEC_EXECUTABLE};${MPIEXEC_NUMPROC_FLAG};1;${MPIEXEC_PREFLAGS}"
 )
 
 add_executable(test_physics tests/test_physics.cpp)
@@ -600,9 +596,7 @@ if(ESMF_FOUND)
   set_target_properties(
     test_field_creation
     test_field_pointer_passing
-    PROPERTIES
-      TEST_LAUNCHER "${MPIEXEC_EXECUTABLE};${MPIEXEC_NUMPROC_FLAG};1;${MPIEXEC_PREFLAGS}"
-      PROCESSORS 1
+    PROPERTIES TEST_LAUNCHER "${MPIEXEC_EXECUTABLE};${MPIEXEC_NUMPROC_FLAG};1;${MPIEXEC_PREFLAGS}"
   )
 endif()
 
@@ -617,9 +611,7 @@ target_compile_definitions(test_helm_cpp PRIVATE CECE_SOURCE_DIR="${CMAKE_CURREN
 # Ensure tests run under MPI
 set_target_properties(
   test_helm_cpp
-  PROPERTIES
-    TEST_LAUNCHER "${MPIEXEC_EXECUTABLE};${MPIEXEC_NUMPROC_FLAG};1;${MPIEXEC_PREFLAGS}"
-    PROCESSORS 1
+  PROPERTIES TEST_LAUNCHER "${MPIEXEC_EXECUTABLE};${MPIEXEC_NUMPROC_FLAG};1;${MPIEXEC_PREFLAGS}"
 )
 
 # Parity Regression Tests
@@ -789,46 +781,55 @@ gtest_discover_tests(test_driver_configuration)
 gtest_discover_tests(test_driver_clock_management)
 gtest_discover_tests(test_clock_operations_unit)
 gtest_discover_tests(test_driver_integration_end_to_end)
-gtest_discover_tests(test_stacking_engine)
-gtest_discover_tests(test_vertical_distribution_single)
-gtest_discover_tests(test_cece_utils)
-gtest_discover_tests(test_cece_compute)
-gtest_discover_tests(test_standalone_writer_attributes PROPERTIES ENVIRONMENT "OMP_PROC_BIND=false")
-gtest_discover_tests(test_physics)
-gtest_discover_tests(test_cece_ingestor)
-gtest_discover_tests(test_hemco_mimic)
-gtest_discover_tests(test_field_resolution_priority)
-gtest_discover_tests(test_hemco_parity)
+gtest_discover_tests(test_stacking_engine PROPERTIES ENVIRONMENT "OMP_PROC_BIND=false")
+gtest_discover_tests(test_vertical_distribution_single PROPERTIES ENVIRONMENT "OMP_PROC_BIND=false")
+gtest_discover_tests(test_cece_utils PROPERTIES PROCESSORS 1 ENVIRONMENT "OMP_PROC_BIND=false")
+gtest_discover_tests(test_cece_compute PROPERTIES ENVIRONMENT "OMP_PROC_BIND=false")
+gtest_discover_tests(
+  test_standalone_writer_attributes
+  PROPERTIES ENVIRONMENT "OMP_PROC_BIND=false" PROCESSORS 1
+)
+gtest_discover_tests(test_physics PROPERTIES ENVIRONMENT "OMP_PROC_BIND=false")
+gtest_discover_tests(test_cece_ingestor PROPERTIES ENVIRONMENT "OMP_PROC_BIND=false")
+gtest_discover_tests(test_hemco_mimic PROPERTIES ENVIRONMENT "OMP_PROC_BIND=false")
+gtest_discover_tests(test_field_resolution_priority PROPERTIES ENVIRONMENT "OMP_PROC_BIND=false")
+gtest_discover_tests(test_hemco_parity PROPERTIES ENVIRONMENT "OMP_PROC_BIND=false")
 gtest_discover_tests(test_kokkos_configuration PROPERTIES ENVIRONMENT "OMP_PROC_BIND=false")
 gtest_discover_tests(test_properties PROPERTIES ENVIRONMENT "OMP_PROC_BIND=false")
-gtest_discover_tests(test_suite_idempotence)
+gtest_discover_tests(test_suite_idempotence PROPERTIES ENVIRONMENT "OMP_PROC_BIND=false")
 gtest_discover_tests(test_repro_failure)
 gtest_discover_tests(test_ccpp_readiness)
-gtest_discover_tests(test_fengsha_properties)
-gtest_discover_tests(test_ginoux_properties)
-gtest_discover_tests(test_k14_properties)
+gtest_discover_tests(test_fengsha_properties PROPERTIES ENVIRONMENT "OMP_PROC_BIND=false")
+gtest_discover_tests(test_ginoux_properties PROPERTIES ENVIRONMENT "OMP_PROC_BIND=false")
+gtest_discover_tests(test_k14_properties PROPERTIES ENVIRONMENT "OMP_PROC_BIND=false")
 gtest_discover_tests(test_speciation PROPERTIES ENVIRONMENT "OMP_PROC_BIND=false")
 gtest_discover_tests(test_megan3 PROPERTIES ENVIRONMENT "OMP_PROC_BIND=false")
 gtest_discover_tests(test_cece_clock_properties)
 gtest_discover_tests(test_cece_clock_run_loop)
 gtest_discover_tests(test_bdsnp PROPERTIES ENVIRONMENT "OMP_PROC_BIND=false")
-gtest_discover_tests(test_helm_cpp PROPERTIES ENVIRONMENT "FI_PROVIDER=tcp;I_MPI_FABRICS=shm")
+gtest_discover_tests(
+  test_helm_cpp
+  PROPERTIES ENVIRONMENT "FI_PROVIDER=tcp;I_MPI_FABRICS=shm;OMP_PROC_BIND=false" PROCESSORS 1
+)
 gtest_discover_tests(test_regression_parity)
 
 if(ESMF_FOUND)
   gtest_discover_tests(
     test_driver_config_validation
-    PROPERTIES ENVIRONMENT "FI_PROVIDER=tcp;I_MPI_FABRICS=shm"
+    PROPERTIES ENVIRONMENT "FI_PROVIDER=tcp;I_MPI_FABRICS=shm" PROCESSORS 1
   )
   gtest_discover_tests(test_cece_cap PROPERTIES ENVIRONMENT "FI_PROVIDER=tcp;I_MPI_FABRICS=shm")
-  gtest_discover_tests(test_diagnostics PROPERTIES ENVIRONMENT "FI_PROVIDER=tcp;I_MPI_FABRICS=shm")
+  gtest_discover_tests(
+    test_diagnostics
+    PROPERTIES ENVIRONMENT "FI_PROVIDER=tcp;I_MPI_FABRICS=shm;OMP_PROC_BIND=false"
+  )
   gtest_discover_tests(
     test_field_creation
-    PROPERTIES ENVIRONMENT "FI_PROVIDER=tcp;I_MPI_FABRICS=shm"
+    PROPERTIES ENVIRONMENT "FI_PROVIDER=tcp;I_MPI_FABRICS=shm;OMP_PROC_BIND=false" PROCESSORS 1
   )
   gtest_discover_tests(
     test_field_pointer_passing
-    PROPERTIES ENVIRONMENT "FI_PROVIDER=tcp;I_MPI_FABRICS=shm;OMP_PROC_BIND=false"
+    PROPERTIES ENVIRONMENT "FI_PROVIDER=tcp;I_MPI_FABRICS=shm;OMP_PROC_BIND=false" PROCESSORS 1
   )
 endif()
 
