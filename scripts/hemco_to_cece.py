@@ -83,7 +83,7 @@ class HemcoParser:
             return line[: line.find("#")].strip()
         return line.strip()
 
-    def load_lines(self, filepath, current_base_dir):
+    def load_lines(self, filepath, current_base_dir) -> list[str]:
         """
         Load lines from a file, handling includes.
         Args:

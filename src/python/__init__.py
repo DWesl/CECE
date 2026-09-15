@@ -66,7 +66,7 @@ from .utils import load_config
 from . import _cece_core
 
 # Module-level state
-_cpp_config: Optional[object] = None
+_cpp_config: Optional[_cece_core.CeceConfig] = None
 _initialized: bool = False
 _last_error: Optional[str] = None
 
@@ -138,7 +138,7 @@ def initialize(config: Union[str, dict, CeceConfig]) -> None:
     _last_error = None
 
 
-def _build_cpp_config(config_obj: CeceConfig) -> object:
+def _build_cpp_config(config_obj: CeceConfig) -> _cece_core.CeceConfig:
     """
     Build a C++ CeceConfig from a Python CeceConfig object.
 
