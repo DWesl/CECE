@@ -123,7 +123,7 @@ class HemcoParser:
             current_section = "MASKS"
         return current_section
 
-    def parse(self):
+    def parse(self):  # noqa: C901, PLR0915
         lines = self.load_lines(self.config_path, self.base_dir)
 
         current_section = None
@@ -408,7 +408,7 @@ def _infer_vdist(be_entry):
     return None
 
 
-def _parse_base_emissions_layer(
+def _parse_base_emissions_layer(  # noqa: C901, PLR0915
     be: dict,
     parser: HemcoParser,
     enabled_ext_nrs: set[str],
@@ -527,7 +527,7 @@ def _parse_base_emissions_layer(
         streams[be["name"]] = _resolve_path(be["file"], root_val)
 
 
-def convert_hemco_to_cece(hemco_config_path, output_path, diagn_path=None):
+def convert_hemco_to_cece(hemco_config_path, output_path, diagn_path=None):  # noqa: C901
     """
     Convert a HEMCO_Config.rc (and optionally HEMCO_Diagn.rc) to an CECE YAML config.
 

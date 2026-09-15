@@ -48,7 +48,7 @@ import yaml
 from jinja2 import Environment, FileSystemLoader, TemplateNotFound
 
 
-def validate_config(config):
+def validate_config(config):  # noqa: C901
     """
     Validate the scheme configuration YAML.
 
@@ -113,7 +113,7 @@ def validate_config(config):
     return errors
 
 
-def generate_scheme(config_path):
+def generate_scheme(config_path):  # noqa: PLR0915
     """
     Generate physics scheme files from configuration.
 
