@@ -49,6 +49,8 @@ __all__ = [
     "CeceExecutionSpaceError",
 ]
 
+import numpy as np
+
 from .exceptions import (
     CeceException,
     CeceConfigError,
@@ -154,6 +156,13 @@ def _build_cpp_config(config_obj: CeceConfig) -> object:
     _cece_core.CeceConfig
         C++ configuration object populated from ``config_obj``.
     """
+    method_map = {
+        "single": _cece_core.VerticalDistributionMethod.SINGLE,
+        "range": _cece_core.VerticalDistributionMethod.RANGE,
+        "pressure": _cece_core.VerticalDistributionMethod.PRESSURE,
+        "height": _cece_core.VerticalDistributionMethod.HEIGHT,
+        "pbl": _cece_core.VerticalDistributionMethod.PBL,
+    }
     cpp_config = _cece_core.CeceConfig()
 
     # Add species
@@ -166,13 +175,6 @@ def _build_cpp_config(config_obj: CeceConfig) -> object:
             cpp_layer.scale = layer.scale
             cpp_layer.vdist_method = _cece_core.VerticalDistributionMethod.SINGLE
             if hasattr(layer, "vdist") and layer.vdist:
-                method_map = {
-                    "single": _cece_core.VerticalDistributionMethod.SINGLE,
-                    "range": _cece_core.VerticalDistributionMethod.RANGE,
-                    "pressure": _cece_core.VerticalDistributionMethod.PRESSURE,
-                    "height": _cece_core.VerticalDistributionMethod.HEIGHT,
-                    "pbl": _cece_core.VerticalDistributionMethod.PBL,
-                }
                 cpp_layer.vdist_method = method_map.get(
                     layer.vdist.method, _cece_core.VerticalDistributionMethod.SINGLE
                 )
@@ -274,11 +276,8 @@ def compute(
     >>> cece.compute(state, hour=12, month=7)
     >>> co_emis = state.get_export_field("CO_EMIS")
     """
-    global _last_error
     if not _initialized:
         raise RuntimeError("CECE is not initialized. Call initialize() first.")
-
-    import numpy as np
 
     # Validate state
     if not isinstance(state, CeceState):
@@ -339,6 +338,7 @@ def compute(
             month,
         )
     except Exception as e:
+        global _last_error
         _last_error = str(e)
         raise
 
