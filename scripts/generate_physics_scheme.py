@@ -113,12 +113,37 @@ def validate_config(config):  # noqa: C901
     return errors
 
 
-def generate_scheme(config_path):  # noqa: PLR0915
-    """
-    Generate physics scheme files from configuration.
+def _banner_print(text: str) -> None:
+    """Print text as banner.
 
-    Args:
-        config_path (str): Path to the YAML configuration file.
+    Print a blank line, a line of =, the text, and another line of =
+
+    Parameters
+    ----------
+    text : str
+        The text to print
+    """
+    banner_line = "=" * 70
+    print("", banner_line, text, banner_line, sep="\n")
+
+
+def _load_and_validate_config(config_path: str) -> dict:
+    """Load YAML config from path, validate and return.
+
+    Exit program if config invalid.
+
+    Parameters
+    ----------
+    config_path : str
+        Path to the YAML configuration file.
+
+    Returns
+    -------
+    config : dict
+
+    Raises
+    ------
+    SystemExit
     """
     if not os.path.exists(config_path):
         print(f"Error: Config file {config_path} not found.")
@@ -134,6 +159,17 @@ def generate_scheme(config_path):  # noqa: PLR0915
         for error in errors:
             print(f"  - {error}")
         sys.exit(1)
+    return config
+
+
+def generate_scheme(config_path: str):
+    """
+    Generate physics scheme files from configuration.
+
+    Args:
+        config_path (str): Path to the YAML configuration file.
+    """
+    config = _load_and_validate_config(config_path)
 
     # Extract configuration
     scheme = config["scheme"]
@@ -194,9 +230,7 @@ def generate_scheme(config_path):  # noqa: PLR0915
         sys.exit(1)
 
     # Generate CMakeLists.txt integration instructions
-    print("\n" + "=" * 70)
-    print("Next Steps:")
-    print("=" * 70)
+    _banner_print("Next Steps:")
     print(
         textwrap.dedent(f"""
       1. Add the following to CMakeLists.txt in the src/physics section:
@@ -242,9 +276,7 @@ def generate_scheme(config_path):  # noqa: PLR0915
          cd build && ctest --output-on-failure""")
     )
 
-    print("\n" + "=" * 70)
-    print(f"Successfully generated scheme: {class_name} ({scheme_name})")
-    print("=" * 70)
+    _banner_print(f"Successfully generated scheme: {class_name} ({scheme_name})")
 
 
 if __name__ == "__main__":
