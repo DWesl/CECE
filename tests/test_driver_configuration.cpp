@@ -515,7 +515,7 @@ TEST_F(DriverConfigurationTest, OutputFieldCollectionPartitionLookupAndManifest)
         "      coverage_content_type: \"coordinate\"\n"
         "      long_name: \"vertical level\"\n"
         "      standard_name: \"model_level_number\"\n"
-        "      units: \"level\"\n"
+        "      units: \"1\"\n"
         "  time:\n"
         "    attributes:\n"
         "      coverage_content_type: \"coordinate\"\n"
