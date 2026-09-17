@@ -249,7 +249,7 @@ struct CeceOutputField {
 inline const std::vector<CeceOutputField> kCoordinateFields{
     {"lon", {{"units", "degrees_east"}, {"long_name", "longitude"}, {"standard_name", "longitude"}, {"coverage_content_type", "coordinate"}}},
     {"lat", {{"units", "degrees_north"}, {"long_name", "latitude"}, {"standard_name", "latitude"}, {"coverage_content_type", "coordinate"}}},
-    {"lev", {{"units", "level"}, {"long_name", "vertical level"}, {"standard_name", "model_level_number"}, {"coverage_content_type", "coordinate"}}},
+    {"lev", {{"units", "1"}, {"long_name", "vertical level"}, {"standard_name", "model_level_number"}, {"coverage_content_type", "coordinate"}}},
     {"time", {{"long_name", "time"}, {"standard_name", "time"}, {"coverage_content_type", "coordinate"}}},
 };
 
