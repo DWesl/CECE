@@ -468,7 +468,7 @@ endif()
 if(${MPI_OVERSUBSCRIBE})
   # --oversubscribe lets the
   # resource-constrained container run -np 2 with limited slots.
-  if(NOT "${MPIEXEC_PREFLAGS}" MATCHES "oversubscribe" AND ${MPI_OVERSUBSCRIBE})
+  if(NOT "${MPIEXEC_PREFLAGS}" MATCHES "oversubscribe")
     list(APPEND MPIEXEC_PREFLAGS "--oversubscribe")
   endif()
 endif()
