@@ -949,6 +949,7 @@ set_tests_properties(
   PROPERTIES
     ENVIRONMENT
       "FI_PROVIDER=tcp;I_MPI_FABRICS=shm;OMPI_ALLOW_RUN_AS_ROOT=1;OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=1"
+    PROCESSORS 2
 )
 
 # Endpoint reuse-decision rank-invariance property test
@@ -985,6 +986,7 @@ set_tests_properties(
   PROPERTIES
     ENVIRONMENT
       "FI_PROVIDER=tcp;I_MPI_FABRICS=shm;OMPI_ALLOW_RUN_AS_ROOT=1;OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=1"
+    PROCESSORS 2
 )
 
 # Fused front-half gate-equivalence property test
@@ -1027,6 +1029,7 @@ set_tests_properties(
   PROPERTIES
     ENVIRONMENT
       "FI_PROVIDER=tcp;I_MPI_FABRICS=shm;OMPI_ALLOW_RUN_AS_ROOT=1;OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=1"
+    PROCESSORS 2
 )
 add_test(
   NAME test_fused_gate_equivalence_np4
@@ -1039,6 +1042,7 @@ set_tests_properties(
   PROPERTIES
     ENVIRONMENT
       "FI_PROVIDER=tcp;I_MPI_FABRICS=shm;OMPI_ALLOW_RUN_AS_ROOT=1;OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=1"
+    PROCESSORS 4
 )
 
 # Collective-count independence Property Test (cece-halo-collective-adoption,
@@ -1076,6 +1080,7 @@ set_tests_properties(
   PROPERTIES
     ENVIRONMENT
       "FI_PROVIDER=tcp;I_MPI_FABRICS=shm;OMPI_ALLOW_RUN_AS_ROOT=1;OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=1"
+    PROCESSORS 2
 )
 
 # HALO single-gather assembly equivalence Property Test
@@ -1116,6 +1121,7 @@ set_tests_properties(
   PROPERTIES
     ENVIRONMENT
       "FI_PROVIDER=tcp;I_MPI_FABRICS=shm;OMPI_ALLOW_RUN_AS_ROOT=1;OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=1;OMP_PROC_BIND=false"
+    PROCESSORS 2
 )
 add_test(
   NAME test_halo_gather_equivalence_np4
@@ -1128,6 +1134,7 @@ set_tests_properties(
   PROPERTIES
     ENVIRONMENT
       "FI_PROVIDER=tcp;I_MPI_FABRICS=shm;OMPI_ALLOW_RUN_AS_ROOT=1;OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=1;OMP_PROC_BIND=false"
+    PROCESSORS 4
 )
 
 # Collective gate-equivalence property tests (cece-halo-collective-adoption,
@@ -1169,6 +1176,7 @@ set_tests_properties(
   PROPERTIES
     ENVIRONMENT
       "FI_PROVIDER=tcp;I_MPI_FABRICS=shm;OMPI_ALLOW_RUN_AS_ROOT=1;OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=1"
+    PROCESSORS 2
 )
 
 # HALO-adoption unit / example / edge-case tests (cece-halo-collective-adoption,
@@ -1203,6 +1211,7 @@ set_tests_properties(
   PROPERTIES
     ENVIRONMENT
       "FI_PROVIDER=tcp;I_MPI_FABRICS=shm;OMPI_ALLOW_RUN_AS_ROOT=1;OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=1"
+    PROCESSORS 2
 )
 add_test(
   NAME test_halo_adoption_units_np4
@@ -1215,6 +1224,7 @@ set_tests_properties(
   PROPERTIES
     ENVIRONMENT
       "FI_PROVIDER=tcp;I_MPI_FABRICS=shm;OMPI_ALLOW_RUN_AS_ROOT=1;OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=1"
+    PROCESSORS 4
 )
 
 # HALO-adoption multi-rank integration test (cece-halo-collective-adoption,
@@ -1256,6 +1266,7 @@ set_tests_properties(
   PROPERTIES
     ENVIRONMENT
       "FI_PROVIDER=tcp;I_MPI_FABRICS=shm;OMPI_ALLOW_RUN_AS_ROOT=1;OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=1;OMP_PROC_BIND=false"
+    PROCESSORS 2
 )
 add_test(
   NAME test_halo_multirank_integration_np4
@@ -1268,6 +1279,7 @@ set_tests_properties(
   PROPERTIES
     ENVIRONMENT
       "FI_PROVIDER=tcp;I_MPI_FABRICS=shm;OMPI_ALLOW_RUN_AS_ROOT=1;OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=1;OMP_PROC_BIND=false"
+    PROCESSORS 4
 )
 
 # MEGAN3 Canopy Model Property Tests
@@ -1584,22 +1596,31 @@ if(ESMF_FOUND)
     test_driver_config_validation
     PROPERTIES ENVIRONMENT "FI_PROVIDER=tcp;I_MPI_FABRICS=shm" PROCESSORS 1
   )
-  gtest_discover_tests(test_cece_cap PROPERTIES ENVIRONMENT "FI_PROVIDER=tcp;I_MPI_FABRICS=shm")
+  gtest_discover_tests(
+    test_cece_cap
+    PROPERTIES ENVIRONMENT "FI_PROVIDER=tcp;I_MPI_FABRICS=shm" RESOURCE_LOCK cece_config_yaml
+  )
   gtest_discover_tests(
     test_diagnostics
     PROPERTIES ENVIRONMENT "FI_PROVIDER=tcp;I_MPI_FABRICS=shm;OMP_PROC_BIND=false"
   )
   gtest_discover_tests(
     test_field_creation
-    PROPERTIES ENVIRONMENT "FI_PROVIDER=tcp;I_MPI_FABRICS=shm;OMP_PROC_BIND=false" PROCESSORS 1
+    PROPERTIES
+      ENVIRONMENT "FI_PROVIDER=tcp;I_MPI_FABRICS=shm;OMP_PROC_BIND=false"
+      PROCESSORS 1
+      RESOURCE_LOCK cece_config_yaml
   )
   gtest_discover_tests(
     test_field_creation_error_handling
-    PROPERTIES ENVIRONMENT "OMP_PROC_BIND=false" PROCESSORS 1
+    PROPERTIES ENVIRONMENT "OMP_PROC_BIND=false" PROCESSORS 1 RESOURCE_LOCK cece_config_yaml
   )
   gtest_discover_tests(
     test_field_pointer_passing
-    PROPERTIES ENVIRONMENT "FI_PROVIDER=tcp;I_MPI_FABRICS=shm;OMP_PROC_BIND=false" PROCESSORS 1
+    PROPERTIES
+      ENVIRONMENT "FI_PROVIDER=tcp;I_MPI_FABRICS=shm;OMP_PROC_BIND=false"
+      PROCESSORS 1
+      RESOURCE_LOCK cece_config_yaml
   )
 endif()
 
@@ -1813,6 +1834,7 @@ foreach(np 2 4)
     PROPERTIES
       ENVIRONMENT
         "RC_PARAMS=max_success=100;FI_PROVIDER=tcp;I_MPI_FABRICS=shm;OMPI_ALLOW_RUN_AS_ROOT=1;OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=1"
+      PROCESSORS ${np}
   )
 endforeach()
 
@@ -1865,6 +1887,7 @@ set_tests_properties(
   PROPERTIES
     ENVIRONMENT
       "FI_PROVIDER=tcp;I_MPI_FABRICS=shm;OMPI_ALLOW_RUN_AS_ROOT=1;OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=1"
+    PROCESSORS 4
 )
 
 # 10.2 Distributed output equivalence (Property 5 & 6). End-to-end: runs the
