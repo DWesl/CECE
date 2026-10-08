@@ -98,7 +98,7 @@ repos:
         entry: symilar
         types_or: ["c", "c++"]
         require_serial: true
-        args: ["--duplicates", "45", "--ignore-comments"]
+        args: ["--duplicates", "20", "--ignore-comments"]
         stages: [manual]
       - id: symilar-fortran
         name: symilar-fortran
