@@ -67,6 +67,13 @@ repos:
         files: ^\.github/CODEOWNERS$
         entry: ^(?!\s*(#|$))(?!.*@ufs-community/chem-core-team).*$
 
+      - id: validate-cece-config
+        name: Validate CECE YAML configs and Markdown
+        entry: python scripts/validate_cece_config.py
+        language: python
+        additional_dependencies: [PyYAML]
+        files: ^(examples/.*\.ya?ml|scripts/examples/.*\.ya?ml|tests/(data/)?[^/]*\.ya?ml|README\.md|docs/.*\.md)$
+
       - id: symilar-yaml
         name: symilar-yaml
         description: Check for code duplication in yaml
