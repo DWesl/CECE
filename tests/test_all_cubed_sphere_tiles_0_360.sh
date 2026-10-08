@@ -7,6 +7,7 @@ set -e
 
 # Ensure output directory exists
 mkdir -p cece_output
+lon_range_tag="_0_360"
 
 # ========================================================================
 # Run the C96 simulation for all 6 tiles sequentially with 0-360 range inputs
@@ -20,7 +21,8 @@ for tile in 1 2 3 4 5 6; do
     echo "------------------------------------------------------------------------"
 
     # Generate temporary config file for this specific tile
-    cat <<EOF > examples/cece_config_ex9_tile${tile}_0_360.yaml
+    tile_yaml_name="examples/cece_config_ex9_tile${tile}${lon_range_tag}.yaml"
+    cat <<EOF > "${tile_yaml_name}"
 # =====================================================================
 # CECE Example 9 - Tile ${tile} Temporary 0-360 Test Configuration
 # =====================================================================
@@ -34,17 +36,17 @@ driver:
     ny: 96
 
 species:
-  co:
+  "co":
     - field: "MACCITY_CO"
       operation: "add"
-  no:
+  "no":
     - field: "MACCITY_NO"
       operation: "add"
 
 cece_data:
   streams:
     - name: "MACCITY_CO"
-      file: "/work/data/MACCity_4x5_0_360.nc"
+      file: "/work/data/MACCity_4x5${lon_range_tag}.nc"
       yearFirst: 2000
       yearLast: 2010
       yearAlign: 2020
@@ -55,7 +57,7 @@ cece_data:
         - file: "MACCity"
           model: "MACCITY_CO"
     - name: "MACCITY_NO"
-      file: "/work/data/MACCity_anthro_NOx_2000-2010_16080_0_360.nc"
+      file: "/work/data/MACCity_anthro_NOx_2000-2010_16080${lon_range_tag}.nc"
       yearFirst: 2000
       yearLast: 2010
       yearAlign: 2020
@@ -73,7 +75,7 @@ diagnostics:
 output:
   enabled: true
   directory: ./cece_output
-  filename_pattern: "cece_c96_tile${tile}_0_360_{YYYY}{MM}{DD}_{HH}{mm}{ss}.nc"
+  filename_pattern: "cece_c96_tile${tile}${lon_range_tag}_{YYYY}{MM}{DD}_{HH}{mm}{ss}.nc"
   frequency_steps: 1
   global_attributes:
     title: "My Custom C96 Tile ${tile} [0-360] Input Simulation"
@@ -90,10 +92,10 @@ output:
 EOF
 
     # Run simulation inside the container
-    ./setup.sh -c "OMP_NUM_THREADS=1 OMP_PROC_BIND=false mpirun --allow-run-as-root -np 2 ./build/cece_standalone_driver examples/cece_config_ex9_tile${tile}_0_360.yaml"
+    ./setup.sh -c "OMP_NUM_THREADS=1 OMP_PROC_BIND=false mpirun --allow-run-as-root -np 2 ./build/cece_standalone_driver ${tile_yaml_name}"
 
     # Clean up temporary config file
-    rm examples/cece_config_ex9_tile${tile}_0_360.yaml
+    rm "${tile_yaml_name}"
 done
 
 # ========================================================================
@@ -105,7 +107,7 @@ echo "========================================================================"
 for tile in 1 2 3 4 5 6; do
     python3 -c "
 import netCDF4 as nc
-f = nc.Dataset('cece_output/cece_c96_tile${tile}_0_360_20200101_010000.nc')
+f = nc.Dataset('cece_output/cece_c96_tile${tile}${lon_range_tag}_20200101_010000.nc')
 lon_shape = f.variables['lon'].shape
 lat_shape = f.variables['lat'].shape
 lon_bnds_shape = f.variables['lon_bnds'].shape
