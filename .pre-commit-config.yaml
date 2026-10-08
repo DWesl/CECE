@@ -85,6 +85,17 @@ repos:
         require_serial: true
         args: ["--duplicates", "55", "--ignore-comments"]
         stages: [manual]
+      - id: symilar-bash
+        name: symilar-bash
+        description: Check for code duplication in bash
+        verbose: true
+        language: python
+        additional_dependencies: ["pylint"]
+        entry: symilar
+        types_or: ["shell"]
+        require_serial: true
+        args: ["--duplicates", "5", "--ignore-comments"]
+        stages: [manual]
       - id: symilar-python
         name: symilar-python
         description: Check for code duplication in python
@@ -116,16 +127,5 @@ repos:
         entry: symilar
         types_or: ["fortran"]
         require_serial: true
-        args: ["--duplicates", "40", "--ignore-comments"]
-        stages: [manual]
-      - id: symilar-bash
-        name: symilar-bash
-        description: Check for code duplication in bash
-        verbose: true
-        language: python
-        additional_dependencies: ["pylint"]
-        entry: symilar
-        types_or: ["shell"]
-        require_serial: true
-        args: ["--duplicates", "20", "--ignore-comments"]
+        args: ["--duplicates", "10", "--ignore-comments"]
         stages: [manual]
