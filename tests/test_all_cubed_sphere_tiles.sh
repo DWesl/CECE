@@ -5,8 +5,6 @@
 
 set -e
 
-bash tests/download_c96_grid_files.sh
-
 # Ensure output directory exists
 mkdir -p cece_output
 
