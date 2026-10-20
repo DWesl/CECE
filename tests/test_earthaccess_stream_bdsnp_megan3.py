@@ -27,6 +27,7 @@ import yaml
 _REPO_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(_REPO_ROOT / "build" / "src" / "python"))
 sys.path.insert(0, str(_REPO_ROOT / "src" / "python"))
+sys.path.append(str(_REPO_ROOT / "scripts"))
 
 # Load earthaccess_resolver and stream_bridge directly from source so that
 # their relative-import package context is not required in the test environment.
