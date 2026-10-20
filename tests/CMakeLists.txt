@@ -165,7 +165,7 @@ cece_add_gtest(
   test_standalone_writer_attributes
   MAIN MPI_KOKKOS
   MPI_LAUNCHER
-  PROPERTIES PROCESSORS 1
+  PROPERTIES PROCESSORS 1 RESOURCE_LOCK tmp_cece_writer_attr_test
 )
 cece_add_gtest(test_rectilinear_gridspec MAIN MPI_KOKKOS MPI_LAUNCHER PROPERTIES PROCESSORS 1)
 cece_add_gtest(test_physics)
