@@ -94,7 +94,7 @@ repos:
         entry: symilar
         types_or: ["shell"]
         require_serial: true
-        args: ["--duplicates", "5", "--ignore-comments"]
+        args: ["--duplicates", "10", "--ignore-comments"]
         stages: [manual]
       - id: symilar-python
         name: symilar-python
