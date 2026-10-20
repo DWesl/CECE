@@ -128,6 +128,16 @@ target_link_libraries(cece_test_main_kokkos PUBLIC cece_test_support)
 
 set(RAPIDCHECK rapidcheck rapidcheck_gtest)
 
+# Support utilities
+add_executable(nccmp_var ${CMAKE_CURRENT_SOURCE_DIR}/nccmp_var.c)
+target_link_libraries(nccmp_var netCDF::netcdf)
+
+add_executable(nclist_vars ${CMAKE_CURRENT_SOURCE_DIR}/helpers/nclist_vars.c)
+target_link_libraries(nclist_vars netCDF::netcdf)
+
+add_executable(ncvar_shape ${CMAKE_CURRENT_SOURCE_DIR}/helpers/ncvar_shape.c)
+target_link_libraries(ncvar_shape netCDF::netcdf)
+
 # --- Driver / configuration --------------------------------------------------
 cece_add_gtest(test_driver_configuration)
 # NUOPC field-coupling config section (`nuopc:`) parsing and the path-based
@@ -491,7 +501,7 @@ if(EXISTS "${PROJECT_SOURCE_DIR}/data/OC-em-anthro_CMIP_CEDS_2023.nc")
       ${CMAKE_CURRENT_SOURCE_DIR}/test_distributed_output_equivalence.sh --driver
       $<TARGET_FILE:cece_standalone_driver> --config
       ${PROJECT_SOURCE_DIR}/examples/cece_config_ceds_oc_small.yaml --comparator
-      ${CMAKE_CURRENT_SOURCE_DIR}/nccmp_var.c --workdir ${CMAKE_BINARY_DIR}/_equiv_workdir
+      $<TARGET_FILE:nccmp_var> --workdir ${CMAKE_BINARY_DIR}/_equiv_workdir
     WORKING_DIRECTORY "${CMAKE_BINARY_DIR}"
   )
   set_tests_properties(
@@ -578,8 +588,7 @@ if(ESMF_FOUND)
         ${CMAKE_CURRENT_SOURCE_DIR}/test_driver_nuopc_parity.sh --cxx-driver
         $<TARGET_FILE:cece_standalone_driver> --nuopc-app $<TARGET_FILE:cece_nuopc_app> --config
         ${PROJECT_SOURCE_DIR}/examples/cece_config_ceds_oc_small.yaml --comparator
-        ${CMAKE_CURRENT_SOURCE_DIR}/nccmp_var.c --varlist
-        ${CMAKE_CURRENT_SOURCE_DIR}/helpers/nclist_vars.c --fields oc --workdir
+        $<TARGET_FILE:nccmp_var> --varlist $<TARGET_FILE:nclist_vars> --fields oc --workdir
         ${CMAKE_BINARY_DIR}/_parity_workdir
       WORKING_DIRECTORY "${CMAKE_BINARY_DIR}"
     )
@@ -611,10 +620,8 @@ if(ESMF_FOUND)
         ${CMAKE_CURRENT_SOURCE_DIR}/test_driver_nuopc_gridspec.sh --cxx-driver
         $<TARGET_FILE:cece_standalone_driver> --nuopc-app $<TARGET_FILE:cece_nuopc_app> --config
         ${PROJECT_SOURCE_DIR}/examples/cece_config_ceds_oc_gridspec.yaml --comparator
-        ${CMAKE_CURRENT_SOURCE_DIR}/nccmp_var.c --varlist
-        ${CMAKE_CURRENT_SOURCE_DIR}/helpers/nclist_vars.c --shaper
-        ${CMAKE_CURRENT_SOURCE_DIR}/helpers/ncvar_shape.c --fields oc --workdir
-        ${CMAKE_BINARY_DIR}/_gridspec_workdir
+        $<TARGET_FILE:nccmp_var> --varlist $<TARGET_FILE:nclist_vars> --shaper
+        $<TARGET_FILE:ncvar_shape> --fields oc --workdir ${CMAKE_BINARY_DIR}/_gridspec_workdir
       WORKING_DIRECTORY "${CMAKE_BINARY_DIR}"
     )
     set_tests_properties(
@@ -644,8 +651,7 @@ if(ESMF_FOUND)
         ${CMAKE_CURRENT_SOURCE_DIR}/test_nuopc_distributed_output_equivalence.sh --cxx-driver
         $<TARGET_FILE:cece_standalone_driver> --nuopc-app $<TARGET_FILE:cece_nuopc_app> --config
         ${PROJECT_SOURCE_DIR}/examples/cece_config_ceds_oc_small.yaml --comparator
-        ${CMAKE_CURRENT_SOURCE_DIR}/nccmp_var.c --varlist
-        ${CMAKE_CURRENT_SOURCE_DIR}/helpers/nclist_vars.c --workdir
+        $<TARGET_FILE:nccmp_var> --varlist $<TARGET_FILE:nclist_vars> --workdir
         ${CMAKE_BINARY_DIR}/_nuopc_equiv_workdir
       WORKING_DIRECTORY "${CMAKE_BINARY_DIR}"
     )
