@@ -4,8 +4,9 @@ Helper functions common to earthaccess download scripts.
 stage_earthaccess_streams and cece_earthaccess_standalone_ingest
 """
 
-from typing import Any
 import os
+from typing import Any
+
 
 def _effective_provider(stream: dict) -> Any:
     daac = stream.get("daac")
