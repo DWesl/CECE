@@ -12,8 +12,6 @@ module driver
   use NUOPC_Driver, only: driver_label_SetModelServices => label_SetModelServices
   use cece_cap_mod, ceceSS => CECE_SetServices
   use, intrinsic :: iso_c_binding
-  use iso8601_utils, only: parse_iso8601_to_esmf_time, format_esmf_time_to_iso8601, &
-       & parse_iso8601_to_esmf_time_c_wrapper, format_esmf_time_to_iso8601_c_wrapper
 
   implicit none
 
