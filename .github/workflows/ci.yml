@@ -89,6 +89,20 @@ jobs:
             echo "Coverage report generated"
           fi
 
+      - name: Run all checked-in examples
+        run: |
+	  source /opt/spack-environment/activate.sh
+	  set -euo pipefail
+          for i in $(seq 6);
+          do
+              ./scripts/data_download/download_ex${i}.sh
+          done
+          for config_yaml in examples/*.yaml;
+          do
+              build/bin/cece_nuopc_app -y "${config_yaml}"
+              build/cece_standalone_driver "${config_yaml}"
+          done
+
       - name: Run HEMCO parity examples
         run: |
           source /opt/spack-environment/activate.sh
