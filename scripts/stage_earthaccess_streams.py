@@ -185,7 +185,7 @@ def _preflight_streams(
     _prepare_auth_environment(auth_strategy)
     for stream in _earthaccess_streams(config):
         provider = _effective_provider(stream)
-        granules = _search_granules(earthaccess, stream, provider)
+        granules = _search_granules(earthaccess, stream, provider, count=1)
         if not granules:
             raise RuntimeError(
                 "No earthaccess granules found during preflight for stream "

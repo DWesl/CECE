@@ -24,7 +24,9 @@ def _prepare_auth_environment(strategy: str) -> None:
         os.environ.pop("EARTHDATA_TOKEN", None)
 
 
-def _search_granules(earthaccess: Any, stream: dict, provider: Any) -> list[Any]:
+def _search_granules(
+    earthaccess: Any, stream: dict, provider: Any, count=-1
+) -> list[Any]:
     try:
         return earthaccess.search_data(
             short_name=stream["short_name"],
@@ -33,7 +35,7 @@ def _search_granules(earthaccess: Any, stream: dict, provider: Any) -> list[Any]
             version=stream.get("version"),
             cloud_hosted=stream.get("cloud_hosted", True),
             provider=provider,
-            count=-1,
+            count=count,
         )
     except RuntimeError as exc:
         if "Token does not exist" in str(exc):
