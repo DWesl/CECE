@@ -28,6 +28,7 @@ __pycache__/
 # Python packaging
 dist/
 *.egg-info/
+*.whl
 
 # Python venv
 venv*/
@@ -40,6 +41,7 @@ venv*/
 *.tmp
 *.temp
 *~
+\#*\#
 site/
 bin/
 data/*.nc
