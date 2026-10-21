@@ -5,6 +5,8 @@
 
 set -e
 
+bash $(dirname $0)/download_c96_grid_files.sh
+
 # Ensure output directory exists
 mkdir -p cece_output
 lon_range_tag=""
