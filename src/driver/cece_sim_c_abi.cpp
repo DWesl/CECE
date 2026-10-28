@@ -27,7 +27,9 @@
 #include "cece/cece_fatal.hpp"
 #include "cece/cece_simulation.hpp"
 
+extern "C" {
 void cece_core_initialize_p1(void** data_ptr_ptr, int* rc);
+}
 
 namespace {
 
