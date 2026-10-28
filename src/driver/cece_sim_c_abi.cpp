@@ -22,9 +22,12 @@
 #include <utility>
 #include <vector>
 
+#include "cece/cece_c_api.hpp"
+#include "cece/cece_config.hpp"
 #include "cece/cece_fatal.hpp"
 #include "cece/cece_simulation.hpp"
-#include "cece/cece_config.hpp"
+
+void cece_core_initialize_p1(void** data_ptr_ptr, int* rc)
 
 namespace {
 
