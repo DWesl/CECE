@@ -5,7 +5,7 @@
 #include <cmath>
 #include <vector>
 
-namespace {
+namespace cece::physics {
 
 /// @brief Compute Kok (2011) normalized dust aerosol size distribution.
 /// @param radii Particle bin effective radii [m]
@@ -38,6 +38,6 @@ inline std::vector<double> compute_kok_distribution(const std::vector<double>& r
     return dist;
 }
 
-}  // anonymous namespace
+}  // namespace cece::physics
 
 #endif

@@ -26,6 +26,7 @@
 #include "cece/cece_logger.hpp"
 #include "cece/cece_physics_factory.hpp"
 #include "cece/physics/cece_kok_distribution.hpp"
+using cece::physics::compute_kok_distribution;
 
 namespace cece {
 
