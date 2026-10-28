@@ -22,7 +22,7 @@
 #include <utility>
 #include <vector>
 
-#include "cece/cece_c_api.hpp"
+#include "cece/cece_c_api.h"
 #include "cece/cece_config.hpp"
 #include "cece/cece_fatal.hpp"
 #include "cece/cece_simulation.hpp"
