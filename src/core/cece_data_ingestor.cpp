@@ -333,9 +333,9 @@ std::string CeceDataIngestor::SerializeStreamYaml(const CeceDataConfig& config) 
 }
 
 void CeceDataIngestor::ClearCache() {
-    CECE_LOG_INFO("INFO: Clearing CeceDataIngestor field cache ("s + std::to_string(field_cache_.size()) + " fields)\n"s);
+    CECE_LOG_INFO("INFO: Clearing CeceDataIngestor field cache ("s + std::to_string(field_cache_.size()) + " fields)");
     field_cache_.clear();
-    CECE_LOG_INFO("INFO: Field cache cleared\n");
+    CECE_LOG_INFO("INFO: Field cache cleared");
 }
 
 }  // namespace cece

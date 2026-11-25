@@ -53,7 +53,7 @@ inline void SetRealStdoutBuf(std::streambuf* buf) {
 inline void LogFatal(const std::string& message) {
     std::ostream log_out(RealStdoutBuf());
     log_out << message + "\n"s;
-    CECE_LOG_ERROR(message + "\n"s);
+    CECE_LOG_ERROR(message);
 }
 
 }  // namespace cece

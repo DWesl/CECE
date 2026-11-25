@@ -31,7 +31,7 @@ namespace cece {
 void SpeciationEngine::Initialize(const SpeciationConfig& config) {
     num_mappings_ = static_cast<int>(config.mappings.size());
     if (num_mappings_ == 0) {
-        CECE_LOG_WARNING("SpeciationEngine: No mappings in config, nothing to initialize.\n");
+        CECE_LOG_WARNING("SpeciationEngine: No mappings in config, nothing to initialize.");
         return;
     }
 
@@ -145,7 +145,7 @@ void SpeciationEngine::Run(const Kokkos::View<const double**, Kokkos::LayoutLeft
         std::string field_name = "MEGAN_" + mechanism_species_names_[sp];
         auto it = export_state.fields.find(field_name);
         if (it == export_state.fields.end()) {
-            CECE_LOG_WARNING("SpeciationEngine: Export field '"s + field_name + "' not found in export state, skipping.\n"s);
+            CECE_LOG_WARNING("SpeciationEngine: Export field '"s + field_name + "' not found in export state, skipping.");
             continue;
         }
 

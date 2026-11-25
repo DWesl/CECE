@@ -46,7 +46,7 @@ void cece_core_get_species_count(void* data_ptr, int* count, int* rc) {
     }
 
     if (data_ptr == nullptr) {
-        CECE_LOG_ERROR("ERROR: cece_core_get_species_count - data_ptr is null\n");
+        CECE_LOG_ERROR("ERROR: cece_core_get_species_count - data_ptr is null");
         if (rc != nullptr) {
             *rc = -1;
         }
@@ -54,7 +54,7 @@ void cece_core_get_species_count(void* data_ptr, int* count, int* rc) {
     }
 
     if (count == nullptr) {
-        CECE_LOG_ERROR("ERROR: cece_core_get_species_count - count pointer is null\n");
+        CECE_LOG_ERROR("ERROR: cece_core_get_species_count - count pointer is null");
         if (rc != nullptr) {
             *rc = -1;
         }
@@ -64,7 +64,7 @@ void cece_core_get_species_count(void* data_ptr, int* count, int* rc) {
     auto* internal_data = static_cast<cece::CeceInternalData*>(data_ptr);
     *count = static_cast<int>(internal_data->config.species_layers.size());
 
-    CECE_LOG_INFO("INFO: cece_core_get_species_count returned "s + std::to_string(*count) + " species\n");
+    CECE_LOG_INFO("INFO: cece_core_get_species_count returned "s + std::to_string(*count) + " species");
 
     if (rc != nullptr) {
         *rc = 0;
@@ -88,7 +88,7 @@ void cece_core_get_species_name(void* data_ptr, int* index, char* name, int* nam
     }
 
     if (data_ptr == nullptr) {
-        CECE_LOG_ERROR("ERROR: cece_core_get_species_name - data_ptr is null\n");
+        CECE_LOG_ERROR("ERROR: cece_core_get_species_name - data_ptr is null");
         if (rc != nullptr) {
             *rc = -1;
         }
@@ -96,7 +96,7 @@ void cece_core_get_species_name(void* data_ptr, int* index, char* name, int* nam
     }
 
     if (index == nullptr || name == nullptr || name_len == nullptr) {
-        CECE_LOG_ERROR("ERROR: cece_core_get_species_name - null pointer argument\n");
+        CECE_LOG_ERROR("ERROR: cece_core_get_species_name - null pointer argument");
         if (rc != nullptr) {
             *rc = -1;
         }
@@ -121,7 +121,7 @@ void cece_core_get_species_name(void* data_ptr, int* index, char* name, int* nam
 
             *name_len = len;
 
-            CECE_LOG_INFO("INFO: cece_core_get_species_name["s + std::to_string(*index) + "] = "s + name_str + "\n"s);
+            CECE_LOG_INFO("INFO: cece_core_get_species_name["s + std::to_string(*index) + "] = "s + name_str);
 
             if (rc != nullptr) {
                 *rc = 0;
@@ -132,7 +132,7 @@ void cece_core_get_species_name(void* data_ptr, int* index, char* name, int* nam
     }
 
     // Index out of range
-    CECE_LOG_ERROR("ERROR: cece_core_get_species_name - index "s + std::to_string(*index) + " out of range\n");
+    CECE_LOG_ERROR("ERROR: cece_core_get_species_name - index "s + std::to_string(*index) + " out of range");
     if (rc != nullptr) {
         *rc = -1;
     }
@@ -157,7 +157,7 @@ void cece_core_get_grid_config(void* data_ptr, int* nx, int* ny, int* nz, double
     }
 
     if (data_ptr == nullptr) {
-        CECE_LOG_ERROR("ERROR: cece_core_get_grid_config - data_ptr is null\n");
+        CECE_LOG_ERROR("ERROR: cece_core_get_grid_config - data_ptr is null");
         if (rc != nullptr) {
             *rc = -1;
         }
@@ -168,7 +168,7 @@ void cece_core_get_grid_config(void* data_ptr, int* nx, int* ny, int* nz, double
 
     // Check output pointers
     if (nx == nullptr || ny == nullptr || nz == nullptr || lon_min == nullptr || lon_max == nullptr || lat_min == nullptr || lat_max == nullptr) {
-        CECE_LOG_ERROR("ERROR: cece_core_get_grid_config - null output pointer\n");
+        CECE_LOG_ERROR("ERROR: cece_core_get_grid_config - null output pointer");
         if (rc != nullptr) {
             *rc = -1;
         }
@@ -220,7 +220,7 @@ void cece_core_get_timing_config(void* data_ptr, char* start_time, char* end_tim
     }
 
     if (data_ptr == nullptr) {
-        CECE_LOG_ERROR("ERROR: cece_core_get_timing_config - data_ptr is null\n");
+        CECE_LOG_ERROR("ERROR: cece_core_get_timing_config - data_ptr is null");
         if (rc != nullptr) {
             *rc = -1;
         }
@@ -231,7 +231,7 @@ void cece_core_get_timing_config(void* data_ptr, char* start_time, char* end_tim
 
     // Check output pointers
     if (start_time == nullptr || end_time == nullptr || timestep_seconds == nullptr) {
-        CECE_LOG_ERROR("ERROR: cece_core_get_timing_config - null output pointer\n");
+        CECE_LOG_ERROR("ERROR: cece_core_get_timing_config - null output pointer");
         if (rc != nullptr) {
             *rc = -1;
         }
@@ -266,7 +266,7 @@ void cece_core_get_gridspec_file_path(void* data_ptr, char* path, int* path_len,
     if (path_len != nullptr) *path_len = 0;
 
     if (data_ptr == nullptr || path == nullptr || path_len == nullptr) {
-        CECE_LOG_ERROR("ERROR: cece_core_get_gridspec_file_path - null pointer argument\n");
+        CECE_LOG_ERROR("ERROR: cece_core_get_gridspec_file_path - null pointer argument");
         if (rc != nullptr) *rc = -1;
         return;
     }
@@ -286,7 +286,7 @@ void cece_core_get_gridspec_file_path(void* data_ptr, char* path, int* path_len,
     std::memcpy(path, gridspec_file_path.c_str(), copy_len);
     path[copy_len] = '\0';
     *path_len = static_cast<int>(copy_len);
-    CECE_LOG_INFO("INFO: gridspec_file path: "s + gridspec_file_path.string() + "\n"s);
+    CECE_LOG_INFO("INFO: gridspec_file path: "s + gridspec_file_path.string());
 }
 
 /**
@@ -342,7 +342,7 @@ void cece_read_timing_config(const char* config_path, int path_len, char* start_
                       std::to_string(*timestep_seconds) + " seconds\n"s);
 
     } catch (const std::exception& e) {
-        CECE_LOG_ERROR("ERROR: Failed to read timing config from "s + config_path + ": "s + e.what() + "\n"s);
+        CECE_LOG_ERROR("ERROR: Failed to read timing config from "s + config_path + ": "s + e.what());
         if (rc != nullptr) {
             *rc = -1;
         }
@@ -368,7 +368,7 @@ void cece_core_bind_fields(void* data_ptr, void** field_ptrs, int* num_fields, i
     }
 
     if (data_ptr == nullptr) {
-        CECE_LOG_ERROR("ERROR: cece_core_bind_fields - data_ptr is null\n");
+        CECE_LOG_ERROR("ERROR: cece_core_bind_fields - data_ptr is null");
         if (rc != nullptr) {
             *rc = -1;
         }
@@ -376,7 +376,7 @@ void cece_core_bind_fields(void* data_ptr, void** field_ptrs, int* num_fields, i
     }
 
     if (num_fields == nullptr) {
-        CECE_LOG_ERROR("ERROR: cece_core_bind_fields - num_fields pointer is null\n");
+        CECE_LOG_ERROR("ERROR: cece_core_bind_fields - num_fields pointer is null");
         if (rc != nullptr) {
             *rc = -1;
         }
@@ -385,7 +385,7 @@ void cece_core_bind_fields(void* data_ptr, void** field_ptrs, int* num_fields, i
 
     // Special case: zero fields is a valid no-op
     if (*num_fields == 0) {
-        CECE_LOG_INFO("INFO: cece_core_bind_fields - zero fields requested (no-op)\n");
+        CECE_LOG_INFO("INFO: cece_core_bind_fields - zero fields requested (no-op)");
         if (rc != nullptr) {
             *rc = 0;
         }
@@ -393,7 +393,7 @@ void cece_core_bind_fields(void* data_ptr, void** field_ptrs, int* num_fields, i
     }
 
     if (field_ptrs == nullptr) {
-        CECE_LOG_ERROR("ERROR: cece_core_bind_fields - null pointer argument\n");
+        CECE_LOG_ERROR("ERROR: cece_core_bind_fields - null pointer argument");
         if (rc != nullptr) {
             *rc = -1;
         }
@@ -401,7 +401,7 @@ void cece_core_bind_fields(void* data_ptr, void** field_ptrs, int* num_fields, i
     }
 
     if (*num_fields < 0) {
-        CECE_LOG_ERROR("ERROR: cece_core_bind_fields - num_fields must be non-negative: "s + std::to_string(*num_fields) + "\n"s);
+        CECE_LOG_ERROR("ERROR: cece_core_bind_fields - num_fields must be non-negative: "s + std::to_string(*num_fields));
         if (rc != nullptr) {
             *rc = -1;
         }
@@ -427,7 +427,7 @@ void cece_core_bind_fields(void* data_ptr, void** field_ptrs, int* num_fields, i
         }
 
         if (field_ptrs[idx] == nullptr) {
-            CECE_LOG_ERROR("ERROR: cece_core_bind_fields - field_ptrs["s + std::to_string(idx) + "] is null for species "s + species_name + "\n"s);
+            CECE_LOG_ERROR("ERROR: cece_core_bind_fields - field_ptrs["s + std::to_string(idx) + "] is null for species "s + species_name);
             if (rc != nullptr) {
                 *rc = -1;
             }
@@ -452,7 +452,7 @@ void cece_core_bind_fields(void* data_ptr, void** field_ptrs, int* num_fields, i
         return;
     }
 
-    CECE_LOG_INFO("INFO: cece_core_bind_fields - bound "s + std::to_string(*num_fields) + " field pointers\n");
+    CECE_LOG_INFO("INFO: cece_core_bind_fields - bound "s + std::to_string(*num_fields) + " field pointers");
 
     if (rc != nullptr) {
         *rc = 0;
@@ -478,7 +478,7 @@ void cece_core_get_ingestor_streams_path(void* data_ptr, char* streams_path, int
     }
 
     if (data_ptr == nullptr) {
-        CECE_LOG_ERROR("ERROR: cece_core_get_ingestor_streams_path - data_ptr is null\n");
+        CECE_LOG_ERROR("ERROR: cece_core_get_ingestor_streams_path - data_ptr is null");
         if (rc != nullptr) {
             *rc = -1;
         }
@@ -486,7 +486,7 @@ void cece_core_get_ingestor_streams_path(void* data_ptr, char* streams_path, int
     }
 
     if (streams_path == nullptr || path_len == nullptr) {
-        CECE_LOG_ERROR("ERROR: cece_core_get_ingestor_streams_path - null pointer argument\n");
+        CECE_LOG_ERROR("ERROR: cece_core_get_ingestor_streams_path - null pointer argument");
         if (rc != nullptr) {
             *rc = -1;
         }
@@ -512,7 +512,7 @@ void cece_core_get_ingestor_streams_path(void* data_ptr, char* streams_path, int
     std::string filename = "cece_data_streams.yaml";
     std::ofstream outfile(filename);
     if (!outfile.is_open()) {
-        CECE_LOG_ERROR("ERROR: Failed to open output file for data streams: "s + filename + "\n"s);
+        CECE_LOG_ERROR("ERROR: Failed to open output file for data streams: "s + filename);
         if (rc != nullptr) *rc = -1;
         return;
     }
@@ -521,7 +521,7 @@ void cece_core_get_ingestor_streams_path(void* data_ptr, char* streams_path, int
 
     // Return filename
     if (filename.length() >= 512) {  // Assuming 512 is buffer size from Fortran
-        CECE_LOG_ERROR("ERROR: streams path too long\n");
+        CECE_LOG_ERROR("ERROR: streams path too long");
         if (rc != nullptr) *rc = -1;
         return;
     }
@@ -549,7 +549,7 @@ void cece_ingestor_init(void* data_ptr, void* c_clock, void* c_mesh, int* rc) {
     if (rc != nullptr) *rc = 0;
 
     if (data_ptr == nullptr) {
-        CECE_LOG_ERROR("ERROR: cece_ingestor_init - data_ptr is null\n");
+        CECE_LOG_ERROR("ERROR: cece_ingestor_init - data_ptr is null");
         if (rc != nullptr) *rc = -1;
         return;
     }
@@ -578,19 +578,19 @@ void cece_core_set_export_field(void* data_ptr, const char* name, int name_len, 
     }
 
     if (data_ptr == nullptr) {
-        CECE_LOG_ERROR("ERROR: cece_core_set_export_field - data_ptr is null\n");
+        CECE_LOG_ERROR("ERROR: cece_core_set_export_field - data_ptr is null");
         if (rc != nullptr) *rc = -1;
         return;
     }
 
     if (name == nullptr || name_len <= 0) {
-        CECE_LOG_ERROR("ERROR: cece_core_set_export_field - invalid name argument\n");
+        CECE_LOG_ERROR("ERROR: cece_core_set_export_field - invalid name argument");
         if (rc != nullptr) *rc = -1;
         return;
     }
 
     if (field_data == nullptr) {
-        CECE_LOG_ERROR("ERROR: cece_core_set_export_field - field_data is null\n");
+        CECE_LOG_ERROR("ERROR: cece_core_set_export_field - field_data is null");
         if (rc != nullptr) *rc = -1;
         return;
     }
@@ -634,7 +634,7 @@ void cece_core_get_input_field_count(void* data_ptr, int* count, int* rc) {
     }
 
     if (data_ptr == nullptr) {
-        CECE_LOG_ERROR("ERROR: cece_core_get_input_field_count - data_ptr is null\n");
+        CECE_LOG_ERROR("ERROR: cece_core_get_input_field_count - data_ptr is null");
         if (rc != nullptr) {
             *rc = -1;
         }
@@ -642,7 +642,7 @@ void cece_core_get_input_field_count(void* data_ptr, int* count, int* rc) {
     }
 
     if (count == nullptr) {
-        CECE_LOG_ERROR("ERROR: cece_core_get_input_field_count - count pointer is null\n");
+        CECE_LOG_ERROR("ERROR: cece_core_get_input_field_count - count pointer is null");
         if (rc != nullptr) {
             *rc = -1;
         }
@@ -672,7 +672,7 @@ void cece_core_get_input_field_name(void* data_ptr, int* index, char* name, int*
     }
 
     if (data_ptr == nullptr) {
-        CECE_LOG_ERROR("ERROR: cece_core_get_input_field_name - data_ptr is null\n");
+        CECE_LOG_ERROR("ERROR: cece_core_get_input_field_name - data_ptr is null");
         if (rc != nullptr) {
             *rc = -1;
         }
@@ -680,7 +680,7 @@ void cece_core_get_input_field_name(void* data_ptr, int* index, char* name, int*
     }
 
     if (index == nullptr || name == nullptr || name_len == nullptr) {
-        CECE_LOG_ERROR("ERROR: cece_core_get_input_field_name - null pointer argument\n");
+        CECE_LOG_ERROR("ERROR: cece_core_get_input_field_name - null pointer argument");
         if (rc != nullptr) {
             *rc = -1;
         }
@@ -725,7 +725,7 @@ void cece_core_get_stream_field_count(void* data_ptr, int* count, int* rc) {
     }
 
     if (data_ptr == nullptr) {
-        CECE_LOG_ERROR("ERROR: cece_core_get_stream_field_count - data_ptr is null\n");
+        CECE_LOG_ERROR("ERROR: cece_core_get_stream_field_count - data_ptr is null");
         if (rc != nullptr) {
             *rc = -1;
         }
@@ -733,7 +733,7 @@ void cece_core_get_stream_field_count(void* data_ptr, int* count, int* rc) {
     }
 
     if (count == nullptr) {
-        CECE_LOG_ERROR("ERROR: cece_core_get_stream_field_count - count pointer is null\n");
+        CECE_LOG_ERROR("ERROR: cece_core_get_stream_field_count - count pointer is null");
         if (rc != nullptr) {
             *rc = -1;
         }
@@ -770,7 +770,7 @@ void cece_core_get_stream_field_name(void* data_ptr, int* index, char* name, int
     }
 
     if (data_ptr == nullptr) {
-        CECE_LOG_ERROR("ERROR: cece_core_get_stream_field_name - data_ptr is null\n");
+        CECE_LOG_ERROR("ERROR: cece_core_get_stream_field_name - data_ptr is null");
         if (rc != nullptr) {
             *rc = -1;
         }
@@ -778,7 +778,7 @@ void cece_core_get_stream_field_name(void* data_ptr, int* index, char* name, int
     }
 
     if (index == nullptr || name == nullptr || name_len == nullptr) {
-        CECE_LOG_ERROR("ERROR: cece_core_get_stream_field_name - null pointer argument\n");
+        CECE_LOG_ERROR("ERROR: cece_core_get_stream_field_name - null pointer argument");
         if (rc != nullptr) {
             *rc = -1;
         }
@@ -811,7 +811,7 @@ void cece_core_get_stream_field_name(void* data_ptr, int* index, char* name, int
     }
 
     // Index out of bounds
-    CECE_LOG_ERROR("ERROR: cece_core_get_stream_field_name - index out of bounds: "s + std::to_string(idx) + "\n"s);
+    CECE_LOG_ERROR("ERROR: cece_core_get_stream_field_name - index out of bounds: "s + std::to_string(idx));
     if (rc != nullptr) {
         *rc = -1;
     }
@@ -830,7 +830,7 @@ void cece_core_get_external_field_count(void* data_ptr, int* count, int* rc) {
     }
 
     if (data_ptr == nullptr) {
-        CECE_LOG_ERROR("ERROR: cece_core_get_external_field_count - data_ptr is null\n");
+        CECE_LOG_ERROR("ERROR: cece_core_get_external_field_count - data_ptr is null");
         if (rc != nullptr) {
             *rc = -1;
         }
@@ -838,7 +838,7 @@ void cece_core_get_external_field_count(void* data_ptr, int* count, int* rc) {
     }
 
     if (count == nullptr) {
-        CECE_LOG_ERROR("ERROR: cece_core_get_external_field_count - count pointer is null\n");
+        CECE_LOG_ERROR("ERROR: cece_core_get_external_field_count - count pointer is null");
         if (rc != nullptr) {
             *rc = -1;
         }
@@ -868,7 +868,7 @@ void cece_core_get_external_field_name(void* data_ptr, int* index, char* name, i
     }
 
     if (data_ptr == nullptr) {
-        CECE_LOG_ERROR("ERROR: cece_core_get_external_field_name - data_ptr is null\n");
+        CECE_LOG_ERROR("ERROR: cece_core_get_external_field_name - data_ptr is null");
         if (rc != nullptr) {
             *rc = -1;
         }
@@ -876,7 +876,7 @@ void cece_core_get_external_field_name(void* data_ptr, int* index, char* name, i
     }
 
     if (index == nullptr || name == nullptr || name_len == nullptr) {
-        CECE_LOG_ERROR("ERROR: cece_core_get_external_field_name - null pointer argument\n");
+        CECE_LOG_ERROR("ERROR: cece_core_get_external_field_name - null pointer argument");
         if (rc != nullptr) {
             *rc = -1;
         }
@@ -953,7 +953,7 @@ void nuopc_fill_spec(const std::vector<std::pair<std::string, cece::NuopcFieldSp
     // buffers untouched.
     if (static_cast<int>(cfg_key.size()) >= key_cap || static_cast<int>(spec.standard_name.size()) >= std_cap ||
         static_cast<int>(spec.units.size()) >= units_cap || static_cast<int>(spec.name.size()) >= name_cap) {
-        CECE_LOG_ERROR("ERROR: cece_nuopc_"s + label + "_spec - output buffer too small for field '"s + cfg_key + "'\n");
+        CECE_LOG_ERROR("ERROR: cece_nuopc_"s + label + "_spec - output buffer too small for field '"s + cfg_key + "'");
         if (rc != nullptr) *rc = -1;
         return;
     }
@@ -981,7 +981,7 @@ void nuopc_count(const char* config_path, int path_len, const char* label, bool 
         cece::CeceConfig config = cece::ParseConfig(yaml_path);
         *count = is_export ? static_cast<int>(config.nuopc.export_fields.size()) : static_cast<int>(config.nuopc.import_fields.size());
     } catch (const std::exception& e) {
-        CECE_LOG_ERROR("ERROR: cece_nuopc_"s + label + "_count - failed to parse config: "s + e.what() + "\n"s);
+        CECE_LOG_ERROR("ERROR: cece_nuopc_"s + label + "_count - failed to parse config: "s + e.what());
         if (rc != nullptr) *rc = -1;
     }
 }
@@ -1008,7 +1008,7 @@ void cece_nuopc_export_spec(const char* config_path, int path_len, int index, ch
         nuopc_fill_spec(config.nuopc.export_fields, index, "export", species, species_cap, species_len, std_name, std_cap, std_len, units, units_cap,
                         units_len, name, name_cap, name_len, rc);
     } catch (const std::exception& e) {
-        CECE_LOG_ERROR("ERROR: cece_nuopc_export_spec - failed to parse config: "s + e.what() + "\n"s);
+        CECE_LOG_ERROR("ERROR: cece_nuopc_export_spec - failed to parse config: "s + e.what());
         if (rc != nullptr) *rc = -1;
     }
 }
@@ -1031,7 +1031,7 @@ void cece_nuopc_import_spec(const char* config_path, int path_len, int index, ch
         nuopc_fill_spec(config.nuopc.import_fields, index, "import", field, field_cap, field_len, std_name, std_cap, std_len, units, units_cap,
                         units_len, name, name_cap, name_len, rc);
     } catch (const std::exception& e) {
-        CECE_LOG_ERROR("ERROR: cece_nuopc_import_spec - failed to parse config: "s + e.what() + "\n"s);
+        CECE_LOG_ERROR("ERROR: cece_nuopc_import_spec - failed to parse config: "s + e.what());
         if (rc != nullptr) *rc = -1;
     }
 }

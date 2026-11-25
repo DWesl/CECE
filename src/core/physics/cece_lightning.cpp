@@ -86,7 +86,7 @@ void LightningScheme::Initialize(const conf::Value& config, CeceDiagnosticManage
     if (config["flash_rate_coeff"]) flash_rate_coeff_ = config["flash_rate_coeff"].as_double();
     if (config["flash_rate_power"]) flash_rate_pow_ = config["flash_rate_power"].as_double();
 
-    CECE_LOG_INFO("LightningScheme: Initialized.\n");
+    CECE_LOG_INFO("LightningScheme: Initialized.");
 }
 
 void LightningScheme::Run(CeceImportState& import_state, CeceExportState& export_state) {

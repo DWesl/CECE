@@ -117,7 +117,7 @@ void EmissionActivityCalculator::Initialize(const conf::Value& config) {
 
             EmissionClass ec;
             if (!StringToEmissionClass(class_name, ec)) {
-                CECE_LOG_WARNING("EmissionActivityCalculator: Unknown emission class '"s + class_name + "', skipping\n"s);
+                CECE_LOG_WARNING("EmissionActivityCalculator: Unknown emission class '"s + class_name + "', skipping");
                 continue;
             }
 

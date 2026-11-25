@@ -42,7 +42,7 @@ extern "C" {
 static int parse_esmf_config_file(const std::string& config_file, std::map<std::string, std::string>& config) {
     std::ifstream file(config_file);
     if (!file.is_open()) {
-        CECE_LOG_ERROR("ERROR: Failed to open config file: "s + config_file + "\n"s);
+        CECE_LOG_ERROR("ERROR: Failed to open config file: "s + config_file);
         return -1;
     }
 
@@ -59,7 +59,7 @@ static int parse_esmf_config_file(const std::string& config_file, std::map<std::
         // Find the colon separator
         size_t colon_pos = line.find(':');
         if (colon_pos == std::string::npos) {
-            CECE_LOG_WARNING("WARNING: Line "s + std::to_string(line_num) + " has no colon separator: "s + line + "\n");
+            CECE_LOG_WARNING("WARNING: Line "s + std::to_string(line_num) + " has no colon separator: "s + line);
             continue;
         }
 
@@ -106,13 +106,13 @@ void cece_core_get_driver_config(const char* config_file, int config_file_len, c
     *rc = 0;
 
     if (config_file == nullptr) {
-        CECE_LOG_ERROR("ERROR: cece_core_get_driver_config - null config_file pointer\n");
+        CECE_LOG_ERROR("ERROR: cece_core_get_driver_config - null config_file pointer");
         *rc = -1;
         return;
     }
 
     if (start_time == nullptr || end_time == nullptr || gridspec_file == nullptr) {
-        CECE_LOG_ERROR("ERROR: cece_core_get_driver_config - null output buffers\n");
+        CECE_LOG_ERROR("ERROR: cece_core_get_driver_config - null output buffers");
         *rc = -1;
         return;
     }
@@ -125,7 +125,7 @@ void cece_core_get_driver_config(const char* config_file, int config_file_len, c
         std::map<std::string, std::string> config;
         int parse_rc = parse_esmf_config_file(config_path, config);
         if (parse_rc != 0) {
-            CECE_LOG_ERROR("ERROR: Failed to parse config file: "s + config_path + "\n"s);
+            CECE_LOG_ERROR("ERROR: Failed to parse config file: "s + config_path);
             *rc = -1;
             return;
         }
@@ -153,7 +153,7 @@ void cece_core_get_driver_config(const char* config_file, int config_file_len, c
             try {
                 timestep_secs = std::stoi(config["timestep_seconds"]);
             } catch (const std::exception& e) {
-                CECE_LOG_WARNING("WARNING: Failed to parse timestep_seconds: "s + e.what() + "\n"s);
+                CECE_LOG_WARNING("WARNING: Failed to parse timestep_seconds: "s + e.what());
                 timestep_secs = 3600;
             }
         }
@@ -163,7 +163,7 @@ void cece_core_get_driver_config(const char* config_file, int config_file_len, c
             try {
                 grid_nx = std::stoi(config["grid_nx"]);
             } catch (const std::exception& e) {
-                CECE_LOG_WARNING("WARNING: Failed to parse grid_nx: "s + e.what() + "\n"s);
+                CECE_LOG_WARNING("WARNING: Failed to parse grid_nx: "s + e.what());
                 grid_nx = 4;
             }
         }
@@ -173,7 +173,7 @@ void cece_core_get_driver_config(const char* config_file, int config_file_len, c
             try {
                 grid_ny = std::stoi(config["grid_ny"]);
             } catch (const std::exception& e) {
-                CECE_LOG_WARNING("WARNING: Failed to parse grid_ny: "s + e.what() + "\n"s);
+                CECE_LOG_WARNING("WARNING: Failed to parse grid_ny: "s + e.what());
                 grid_ny = 4;
             }
         }
@@ -185,7 +185,7 @@ void cece_core_get_driver_config(const char* config_file, int config_file_len, c
 
         // Copy start_time
         if (start_str.length() >= static_cast<size_t>(start_time_len)) {
-            CECE_LOG_WARNING("WARNING: start_time buffer too small, truncating\n");
+            CECE_LOG_WARNING("WARNING: start_time buffer too small, truncating");
             std::strncpy(start_time, start_str.c_str(), start_time_len - 1);
             start_time[start_time_len - 1] = '\0';
         } else {
@@ -194,7 +194,7 @@ void cece_core_get_driver_config(const char* config_file, int config_file_len, c
 
         // Copy end_time
         if (end_str.length() >= static_cast<size_t>(end_time_len)) {
-            CECE_LOG_WARNING("WARNING: end_time buffer too small, truncating\n");
+            CECE_LOG_WARNING("WARNING: end_time buffer too small, truncating");
             std::strncpy(end_time, end_str.c_str(), end_time_len - 1);
             end_time[end_time_len - 1] = '\0';
         } else {
@@ -213,7 +213,7 @@ void cece_core_get_driver_config(const char* config_file, int config_file_len, c
                 gridspec_file[i] = ' ';
             }
         } else if (gridspec_str.length() >= static_cast<size_t>(gridspec_file_len)) {
-            CECE_LOG_WARNING("WARNING: gridspec_file buffer too small, truncating\n");
+            CECE_LOG_WARNING("WARNING: gridspec_file buffer too small, truncating");
             std::strncpy(gridspec_file, gridspec_str.c_str(), gridspec_file_len - 1);
             gridspec_file[gridspec_file_len - 1] = '\0';
         } else {
@@ -242,13 +242,13 @@ void cece_core_get_driver_config(const char* config_file, int config_file_len, c
 
         // Validate grid dimensions nx, ny > 0
         if (*nx <= 0) {
-            CECE_LOG_ERROR("ERROR: [cece_core_get_driver_config] grid_nx must be positive, got: "s + std::to_string(*nx) + "\n"s);
+            CECE_LOG_ERROR("ERROR: [cece_core_get_driver_config] grid_nx must be positive, got: "s + std::to_string(*nx));
             *rc = -1;
             return;
         }
 
         if (*ny <= 0) {
-            CECE_LOG_ERROR("ERROR: [cece_core_get_driver_config] grid_ny must be positive, got: "s + std::to_string(*ny) + "\n"s);
+            CECE_LOG_ERROR("ERROR: [cece_core_get_driver_config] grid_ny must be positive, got: "s + std::to_string(*ny));
             *rc = -1;
             return;
         }
@@ -266,7 +266,7 @@ void cece_core_get_driver_config(const char* config_file, int config_file_len, c
         CECE_LOG_INFO(logmsg);
 
     } catch (const std::exception& e) {
-        CECE_LOG_ERROR("ERROR: cece_core_get_driver_config - Exception: "s + e.what() + "\n"s);
+        CECE_LOG_ERROR("ERROR: cece_core_get_driver_config - Exception: "s + e.what());
         *rc = -1;
         return;
     }

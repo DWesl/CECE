@@ -93,7 +93,7 @@ void DustScheme::Initialize(const conf::Value& config, CeceDiagnosticManager* di
         ch_dust_ = config["tuning_factor"].as_double();
     }
 
-    CECE_LOG_INFO("DustScheme: Initialized. U_TS0="s + std::to_string(u_ts0_) + " CH_DUST="s + std::to_string(ch_dust_) + "\n"s);
+    CECE_LOG_INFO("DustScheme: Initialized. U_TS0="s + std::to_string(u_ts0_) + " CH_DUST="s + std::to_string(ch_dust_));
 }
 
 void DustScheme::Run(CeceImportState& import_state, CeceExportState& export_state) {

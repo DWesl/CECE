@@ -57,14 +57,14 @@ void cece_core_realize_impl(void* data_ptr, int* rc) {
     cece::CeceInternalData* internal_data = static_cast<cece::CeceInternalData*>(data_ptr);
 
     if (internal_data == nullptr) {
-        CECE_LOG_ERROR("ERROR in cece_core_realize: Internal data pointer is null\n");
+        CECE_LOG_ERROR("ERROR in cece_core_realize: Internal data pointer is null");
         if (rc != nullptr) {
             *rc = -1;
         }
         return;
     }
 
-    CECE_LOG_INFO("INFO: CECE Realize Phase - Validating configuration\n");
+    CECE_LOG_INFO("INFO: CECE Realize Phase - Validating configuration");
 
     // Parse YAML configuration to validate field requirements
     cece::CeceConfig config;
@@ -72,7 +72,7 @@ void cece_core_realize_impl(void* data_ptr, int* rc) {
         const std::string& config_path = cece::GetConfigFilePath();
         config = cece::ParseConfig(config_path);
     } catch (const std::exception& e) {
-        CECE_LOG_ERROR("ERROR in cece_core_realize: Failed to parse config: "s + e.what() + "\n");
+        CECE_LOG_ERROR("ERROR in cece_core_realize: Failed to parse config: "s + e.what());
         if (rc != nullptr) {
             *rc = -1;
         }
@@ -87,18 +87,18 @@ void cece_core_realize_impl(void* data_ptr, int* rc) {
 
     // Log expected import fields
     if (!config.met_mapping.empty()) {
-        CECE_LOG_INFO("INFO: Expecting "s + std::to_string(config.met_mapping.size()) + " meteorological import fields\n"s);
+        CECE_LOG_INFO("INFO: Expecting "s + std::to_string(config.met_mapping.size()) + " meteorological import fields");
     }
 
     if (!config.scale_factor_mapping.empty()) {
-        CECE_LOG_INFO("INFO: Expecting "s + std::to_string(config.scale_factor_mapping.size()) + " scale factor import fields\n"s);
+        CECE_LOG_INFO("INFO: Expecting "s + std::to_string(config.scale_factor_mapping.size()) + " scale factor import fields");
     }
 
     if (!config.mask_mapping.empty()) {
-        CECE_LOG_INFO("INFO: Expecting "s + std::to_string(config.mask_mapping.size()) + " mask import fields\n"s);
+        CECE_LOG_INFO("INFO: Expecting "s + std::to_string(config.mask_mapping.size()) + " mask import fields");
     }
 
-    CECE_LOG_INFO("INFO: CECE Realize Phase complete - fields managed by driver\n"s);
+    CECE_LOG_INFO("INFO: CECE Realize Phase complete - fields managed by driver");
 
     if (rc != nullptr) {
         *rc = 0;

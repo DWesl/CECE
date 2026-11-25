@@ -65,11 +65,11 @@ void BdsnpFortranScheme::Initialize(const conf::Value& config, CeceDiagnosticMan
         soil_no_method_ = config["soil_no_method"].as_string();
     }
     if (soil_no_method_ != "bdsnp" && soil_no_method_ != "yl95") {
-        CECE_LOG_WARNING("BdsnpFortranScheme: WARNING - Unknown soil_no_method '"s + soil_no_method_ + "', falling back to 'bdsnp'\n"s);
+        CECE_LOG_WARNING("BdsnpFortranScheme: WARNING - Unknown soil_no_method '"s + soil_no_method_ + "', falling back to 'bdsnp'");
         soil_no_method_ = "bdsnp";
     }
 
-    CECE_LOG_INFO("BdsnpFortranScheme: Initialized with soil_no_method='"s + soil_no_method_ + "'\n"s);
+    CECE_LOG_INFO("BdsnpFortranScheme: Initialized with soil_no_method='"s + soil_no_method_ + "'");
 }
 
 // ============================================================================

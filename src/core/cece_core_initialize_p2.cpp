@@ -66,7 +66,7 @@ void cece_core_initialize_p2(void* data_ptr, int* nx, int* ny, int* nz, int* rc)
         *rc = 0;  // 0 = success in C
     }
 
-    CECE_LOG_INFO("INFO: CECE Initialize Phase 2 (IPDv00p2) - Field binding and data stream setup\n");
+    CECE_LOG_INFO("INFO: CECE Initialize Phase 2 (IPDv00p2) - Field binding and data stream setup");
 
     // 1. Validate that Phase 1 completed successfully
     if (data_ptr == nullptr) {
@@ -81,7 +81,7 @@ void cece_core_initialize_p2(void* data_ptr, int* nx, int* ny, int* nz, int* rc)
     }
 
     auto* internal_data = static_cast<cece::CeceInternalData*>(data_ptr);
-    CECE_LOG_INFO("INFO: Internal data structure validated\n");
+    CECE_LOG_INFO("INFO: Internal data structure validated");
 
     // 2. Store grid dimensions passed from Fortran
     if (nx == nullptr || ny == nullptr || nz == nullptr) {
@@ -111,14 +111,14 @@ void cece_core_initialize_p2(void* data_ptr, int* nx, int* ny, int* nz, int* rc)
 
     // 3. Initialize data ingestor if streams are configured
     if (!internal_data->config.cece_data.streams.empty()) {
-        CECE_LOG_INFO("INFO: cece_data streams configured - initializing data ingestor\n");
-        CECE_LOG_INFO("INFO: Number of streams: "s + std::to_string(internal_data->config.cece_data.streams.size()) + "\n"s);
+        CECE_LOG_INFO("INFO: cece_data streams configured - initializing data ingestor");
+        CECE_LOG_INFO("INFO: Number of streams: "s + std::to_string(internal_data->config.cece_data.streams.size()));
     } else {
-        CECE_LOG_INFO("INFO: No TIDE streams configured - skipping driver initialization\n");
+        CECE_LOG_INFO("INFO: No TIDE streams configured - skipping driver initialization");
     }
 
     // 4. Allocate default mask (all 1.0)
-    CECE_LOG_INFO("INFO: Allocating default mask\n");
+    CECE_LOG_INFO("INFO: Allocating default mask");
     try {
         internal_data->default_mask = Kokkos::View<double***, Kokkos::LayoutLeft, Kokkos::DefaultExecutionSpace>(
             "default_mask", internal_data->nx, internal_data->ny, internal_data->nz);
@@ -126,9 +126,9 @@ void cece_core_initialize_p2(void* data_ptr, int* nx, int* ny, int* nz, int* rc)
         // Initialize mask to 1.0 on device
         Kokkos::deep_copy(internal_data->default_mask, 1.0);
 
-        CECE_LOG_INFO("INFO: Default mask allocated and initialized to 1.0\n");
+        CECE_LOG_INFO("INFO: Default mask allocated and initialized to 1.0");
     } catch (const std::exception& e) {
-        CECE_LOG_ERROR("ERROR: Failed to allocate default mask: "s + e.what() + "\n"s);
+        CECE_LOG_ERROR("ERROR: Failed to allocate default mask: "s + e.what());
         if (rc != nullptr) {
             *rc = -1;
         }
@@ -154,9 +154,9 @@ void cece_core_initialize_p2(void* data_ptr, int* nx, int* ny, int* nz, int* rc)
         internal_data->esmf_fields.push_back(internal_name);
     }
 
-    CECE_LOG_INFO("INFO: Cached "s + std::to_string(internal_data->esmf_fields.size()) + " import field mappings\n"s);
+    CECE_LOG_INFO("INFO: Cached "s + std::to_string(internal_data->esmf_fields.size()) + " import field mappings");
 
-    CECE_LOG_INFO("INFO: CECE Initialize Phase 2 completed successfully\n");
+    CECE_LOG_INFO("INFO: CECE Initialize Phase 2 completed successfully");
 
     if (rc != nullptr) {
         *rc = 0;  // 0 = success

@@ -62,7 +62,7 @@ void cece_core_realize_with_states(void* data_ptr, void* importState_ptr, void* 
 
     // Validate required pointers
     if (exportState_ptr == nullptr) {
-        CECE_LOG_ERROR("ERROR: cece_core_realize_with_states - exportState_ptr is null\n");
+        CECE_LOG_ERROR("ERROR: cece_core_realize_with_states - exportState_ptr is null");
         if (rc != nullptr) {
             *rc = -1;
         }
@@ -70,7 +70,7 @@ void cece_core_realize_with_states(void* data_ptr, void* importState_ptr, void* 
     }
 
     if (grid_ptr == nullptr) {
-        CECE_LOG_ERROR("ERROR: cece_core_realize_with_states - grid_ptr is null\n");
+        CECE_LOG_ERROR("ERROR: cece_core_realize_with_states - grid_ptr is null");
         if (rc != nullptr) {
             *rc = -1;
         }

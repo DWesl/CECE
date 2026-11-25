@@ -28,7 +28,7 @@ void NativePhysicsExample::Initialize(const conf::Value& config, CeceDiagnosticM
         multiplier_ = config["multiplier"].as_double();
     }
 
-    CECE_LOG_INFO("NativePhysicsExample: Initialized.\n");
+    CECE_LOG_INFO("NativePhysicsExample: Initialized.");
     if (diag_manager != nullptr) {
         // Register an example diagnostic variable
         diag_manager->RegisterDiagnostic("native_example_diag", 1, 1, 1);

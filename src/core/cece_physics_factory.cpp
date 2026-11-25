@@ -54,7 +54,7 @@ std::unique_ptr<PhysicsScheme> PhysicsFactory::CreateScheme(const PhysicsSchemeC
     auto it = registry.find(config.name);
 
     if (it != registry.end()) {
-        CECE_LOG_INFO("CECE_PhysicsFactory: Creating scheme "s + config.name + "\n"s);
+        CECE_LOG_INFO("CECE_PhysicsFactory: Creating scheme "s + config.name);
         return it->second();
     }
 

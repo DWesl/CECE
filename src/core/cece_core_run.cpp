@@ -116,7 +116,7 @@ void ExecuteStepClockGated(cece::CeceInternalData& d, int* rc) {
 }
 
 void ExecuteStepUnconditional(cece::CeceInternalData& d, int hour, int day_of_week) {
-    CECE_LOG_INFO("CECE_Run: executing step (hour="s + std::to_string(hour) + ", day_of_week="s + std::to_string(day_of_week) + ")\n");
+    CECE_LOG_INFO("CECE_Run: executing step (hour="s + std::to_string(hour) + ", day_of_week="s + std::to_string(day_of_week) + ")");
 
     IngestEmissions(d);
 
@@ -172,7 +172,7 @@ void cece_core_run(void* data_ptr, int hour, int day_of_week, int* rc) {
     try {
         auto* d = static_cast<cece::CeceInternalData*>(data_ptr);
         if (!d) {
-            CECE_LOG_ERROR("CECE_Run: null data_ptr\n");
+            CECE_LOG_ERROR("CECE_Run: null data_ptr");
             *rc = -1;
             return;
         }
@@ -186,10 +186,10 @@ void cece_core_run(void* data_ptr, int hour, int day_of_week, int* rc) {
         SyncAndCopyState(*d);
 
     } catch (const std::exception& e) {
-        CECE_LOG_ERROR("CECE_Run: "s + e.what() + "\n");
+        CECE_LOG_ERROR("CECE_Run: "s + e.what());
         *rc = -1;
     } catch (...) {
-        CECE_LOG_ERROR("CECE_Run: unknown\n");
+        CECE_LOG_ERROR("CECE_Run: unknown");
         *rc = -1;
     }
 }

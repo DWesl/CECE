@@ -118,7 +118,7 @@ void cece_run_log_setup(const char* config_path, int path_len) {
             std::cout.rdbuf(tee_buf);
             stdout_redirected = true;
         } else {
-            CECE_LOG_WARNING("WARNING: Could not open log file '"s + log_file_path + "' - continuing with console output only.\n");
+            CECE_LOG_WARNING("WARNING: Could not open log file '"s + log_file_path + "' - continuing with console output only.");
             delete log_file_stream;
         }
     }
